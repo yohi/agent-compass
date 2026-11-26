@@ -10,7 +10,14 @@ AIコーディングエージェント・LLMの公式推奨事項を継続管理
 - [AGENTS.md Generator](docs/GENERATOR.md)
 - [AGENTS.md Auditor](docs/AUDITOR.md)
 - [Pinned project pilot and A/B case](docs/PILOT.md)
+- [Public knowledge portal and Pages setup](docs/PORTAL.md)
 - [Monitor workflow](.github/workflows/monitor.yml) / [monitor state and notifications](../../issues)
+
+## Web portal
+
+Planned public URL: https://yohi.github.io/agent-compass/ (requires Pages activation).
+Search guidance, compare targets, generate draft bundles, and run a browser-local
+lightweight audit. See [Pages setup](docs/PORTAL.md).
 
 ## Quick start
 

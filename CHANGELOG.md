@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0 — 2026-11-27
+
+- Static bilingual knowledge portal with search, filters, comparisons and evidence links.
+- Prebuilt Python generator bundles and browser-local Auditor Lite.
+- SHA-pinned GitHub Pages build/deploy workflow; initial repository activation may be required.
+
 ## 0.4.0 — 2026-11-27
 
 - Pinned, read-only practical pilot across Justice, Nexus and ChronosGraph.
