@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0 — 2026-11-27
+
+- Pinned, read-only practical pilot across Justice, Nexus and ChronosGraph.
+- Reproducible experimental Justice A/B case preparation; model trials remain unexecuted.
+
 ## 0.3.2 — 2026-11-27
 
 - Read-only lexical instruction auditor with line references, profile-scoped evidence and input/registry fingerprints.

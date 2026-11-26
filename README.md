@@ -9,6 +9,7 @@ AIコーディングエージェント・LLMの公式推奨事項を継続管理
 - [Curation workflow and coverage](docs/CURATION.md)
 - [AGENTS.md Generator](docs/GENERATOR.md)
 - [AGENTS.md Auditor](docs/AUDITOR.md)
+- [Pinned project pilot and A/B case](docs/PILOT.md)
 - [Monitor workflow](.github/workflows/monitor.yml) / [monitor state and notifications](../../issues)
 
 ## Quick start
