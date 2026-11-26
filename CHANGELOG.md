@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 — 2026-11-27
+
+- Curated 35 additional scoped practices from official guidance and model cards.
+- Expanded model and source coverage, with explicit research gaps and API/harness distinctions.
+- Documented ongoing curation; no changes to monitor code or existing state.
+
 ## 0.2.1 — 2026-11-27
 
 - Use Google's official AI Studio text index directly; keep redirect restrictions.

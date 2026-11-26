@@ -78,5 +78,80 @@
     "id": "qwen",
     "kind": "family",
     "name": "Qwen"
+  },
+  {
+    "id": "gpt-6.2-astra",
+    "kind": "model",
+    "name": "GPT-6.2 Astra"
+  },
+  {
+    "id": "gpt-6.2-sol",
+    "kind": "model",
+    "name": "GPT-6.2 Sol"
+  },
+  {
+    "id": "claude-opus-5.5",
+    "kind": "model",
+    "name": "Claude Opus 5.5"
+  },
+  {
+    "id": "claude-sonnet-5.5",
+    "kind": "model",
+    "name": "Claude Sonnet 5.5"
+  },
+  {
+    "id": "claude-haiku-5.5",
+    "kind": "model",
+    "name": "Claude Haiku 5.5"
+  },
+  {
+    "id": "claude-fable-5.2",
+    "kind": "model",
+    "name": "Claude Fable 5.2"
+  },
+  {
+    "id": "claude-mythos-5.2",
+    "kind": "model",
+    "name": "Claude Mythos 5.2"
+  },
+  {
+    "id": "kimi-k2.7-code",
+    "kind": "model",
+    "name": "Kimi K2.7 Code"
+  },
+  {
+    "id": "kimi-k2.8-preview",
+    "kind": "model",
+    "name": "Kimi K2.8 Preview (research target)"
+  },
+  {
+    "id": "kimi-k3",
+    "kind": "model",
+    "name": "Kimi K3"
+  },
+  {
+    "id": "glm-5.2",
+    "kind": "model",
+    "name": "GLM 5.2"
+  },
+  {
+    "id": "deepseek-v4-pro",
+    "kind": "model",
+    "name": "DeepSeek V4 Pro"
+  },
+  {
+    "id": "deepseek-flash",
+    "kind": "model",
+    "name": "DeepSeek Flash (API identifier)"
+  },
+  {
+    "id": "gemini-3",
+    "kind": "family",
+    "name": "Gemini 3 series"
+  },
+  {
+    "id": "superpowers",
+    "kind": "common",
+    "name": "Superpowers (workflow framework)"
   }
 ]

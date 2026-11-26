@@ -232,5 +232,86 @@
     "kind": "official-docs",
     "checked": "2026-11-27",
     "format": "html"
+  },
+  {
+    "id": "gpt62-guide",
+    "publisher": "OpenAI",
+    "url": "https://developers.openai.com/api/docs/guides/latest-model",
+    "target": "gpt-6.2-astra",
+    "kind": "official-guide",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "opus55-guide",
+    "publisher": "Anthropic",
+    "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5",
+    "target": "claude-opus-5.5",
+    "kind": "official-guide",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "sonnet55-guide",
+    "publisher": "Anthropic",
+    "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-sonnet-5-5",
+    "target": "claude-sonnet-5.5",
+    "kind": "official-guide",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "haiku55-guide",
+    "publisher": "Anthropic",
+    "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-haiku-5-5",
+    "target": "claude-haiku-5.5",
+    "kind": "official-guide",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "fable52-guide",
+    "publisher": "Anthropic",
+    "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-2",
+    "target": "claude-fable-5.2",
+    "kind": "official-guide",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "kimi-k27-card",
+    "publisher": "Moonshot AI",
+    "url": "https://huggingface.co/moonshotai/Kimi-K2.7-Code",
+    "target": "kimi-k2.7-code",
+    "kind": "upstream-model-card",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "kimi-k3-card",
+    "publisher": "Moonshot AI",
+    "url": "https://github.com/MoonshotAI/Kimi-K3",
+    "target": "kimi-k3",
+    "kind": "upstream-model-card",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "superpowers-guide",
+    "publisher": "Superpowers",
+    "url": "https://github.com/obra/superpowers",
+    "target": "superpowers",
+    "kind": "upstream-docs",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "opencode-skills",
+    "publisher": "OpenCode",
+    "url": "https://opencode.ai/docs/skills/",
+    "target": "opencode",
+    "kind": "official-docs",
+    "checked": "2026-11-27",
+    "format": "html"
   }
 ]

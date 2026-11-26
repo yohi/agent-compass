@@ -6,6 +6,7 @@ AIコーディングエージェント・LLMの公式推奨事項を継続管理
 - [Current bilingual best practices](docs/BEST_PRACTICES.md)
 - [Source registry](registry/sources.json) / [Target registry](registry/targets.json)
 - [Practice registry](registry/practices.json)
+- [Curation workflow and coverage](docs/CURATION.md)
 - [Monitor workflow](.github/workflows/monitor.yml) / [monitor state and notifications](../../issues)
 
 ## Quick start
@@ -29,13 +30,13 @@ uv run --extra dev ruff check .
 JSON is the canonical registry (also a YAML 1.2 subset). Source records, target
 records and practice records are deliberately separate. A model family does not
 imply that every version shares its guidance. Unknown model-specific guidance
-remains unknown. Source date denotes human source inspection, not a live fetch.
+remains unknown. Source date denotes curator source inspection, not a live fetch.
 
 Daily UTC 03:17 (JST 12:17) and manual workflow: fetch configured official
 sources, normalize visible text, compare content and chunk fingerprints, report
 source changes or fetch failures in one bot-owned GitHub issue. The first
 successful fetch establishes a baseline; failures retain the last successful
-fingerprint. No raw source bodies or model-generated claims are persisted.
+fingerprint. No raw source bodies are persisted by the monitor; curated summaries carry scoped evidence.
 Chunk changes are approximate, not semantic diffs. Dynamic websites may cause
 false positives or failures. Inspect the linked official source before adoption.
 The initial source set is not exhaustive; discovery can propose new official sources

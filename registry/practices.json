@@ -192,7 +192,7 @@
     "evidence": [
       "kimi-k25-card"
     ],
-    "scope": "Provider recommendation, not independent comparative evidence.",
+    "scope": "Provider recommendation, not independent comparative evidence. Historical model-card guidance; availability not asserted.",
     "local_eval": "not_verified",
     "reviewed": "2026-11-27"
   },
@@ -235,6 +235,497 @@
       "qwen-quickstart"
     ],
     "scope": "Do not generalize to all Qwen variants.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-018",
+    "target": "codex",
+    "category": "persistent-instructions",
+    "status": "conditional",
+    "en": "Use a concise navigation map to repository knowledge and load details when the task requires them; the case study is not a mandated line count.",
+    "ja": "AGENTS.mdはリポジトリ知識への短い案内とし、詳細は必要に応じて読む。行数の一律制限ではない。",
+    "evidence": [
+      "codex-harness"
+    ],
+    "scope": "OpenAI harness-engineering case study; implementation pattern, not a format requirement.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-019",
+    "target": "gpt-6-astra",
+    "category": "context",
+    "status": "conditional",
+    "en": "Reconsider instructions that force a file reread before every edit when the necessary context is already present.",
+    "ja": "編集前のファイル再読込を常に強制する指示は、必要な情報が既にある場合に見直す。",
+    "evidence": [
+      "astra-prompting"
+    ],
+    "scope": "GPT-6 Astra; preserve necessary freshness and safety checks.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-020",
+    "target": "gpt-6.2-astra",
+    "category": "completion",
+    "status": "recommended",
+    "en": "State the deliverable, permitted autonomous steps and decisions reserved for the user; allow reversible assumptions within scope.",
+    "ja": "成果物・自律実行可能な範囲・ユーザー判断事項を明示し、範囲内の可逆な仮定を許容する。",
+    "evidence": [
+      "gpt62-guide"
+    ],
+    "scope": "Task completion guidance for GPT-6.2; does not confer authorization.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-021",
+    "target": "gpt-6.2-astra",
+    "category": "verification",
+    "status": "recommended",
+    "en": "Specify project conventions, compatibility expectations and checks that demonstrate the requested behavior.",
+    "ja": "プロジェクト規約、互換性の要求、依頼された挙動を実証する検証方法を明示する。",
+    "evidence": [
+      "gpt62-guide"
+    ],
+    "scope": "Coding guidance; avoid unsupported completion claims.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-022",
+    "target": "gpt-6.2-astra",
+    "category": "reasoning",
+    "status": "conditional",
+    "en": "Begin a new API integration at medium reasoning effort and evaluate higher effort for complex work.",
+    "ja": "新規API統合ではmediumを起点に、複雑な作業では高い推論設定の効果を測る。",
+    "evidence": [
+      "gpt62-guide"
+    ],
+    "scope": "API default starting point, not a Codex UI guarantee.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-023",
+    "target": "gpt-6.2-sol",
+    "category": "completion",
+    "status": "recommended",
+    "en": "Define the outcome and which decisions require user involvement rather than requiring a checkpoint for every routine operation.",
+    "ja": "通常操作ごとの承認ではなく、目的とユーザー判断が必要な事項を定義する。",
+    "evidence": [
+      "gpt62-guide"
+    ],
+    "scope": "Guide explicitly covers GPT-6.2 Astra and Sol; retain genuine approval gates.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-024",
+    "target": "gpt-6.2-sol",
+    "category": "reasoning",
+    "status": "conditional",
+    "en": "Use medium reasoning effort as an initial API configuration and tune against task outcomes.",
+    "ja": "APIではmediumを初期設定とし、実際のタスク成果で調整する。",
+    "evidence": [
+      "gpt62-guide"
+    ],
+    "scope": "API integration only; effort labels are not interchangeable with other vendors.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-025",
+    "target": "claude-opus-5.5",
+    "category": "reasoning",
+    "status": "conditional",
+    "en": "Start effort calibration at medium, explicitly set the level, and reserve xhigh or max for measured benefit.",
+    "ja": "mediumを明示的な起点にして推論量を評価し、xhigh/maxは品質向上が実測できる場合に選ぶ。",
+    "evidence": [
+      "opus55-guide"
+    ],
+    "scope": "Claude Opus 5.5 API; not the Opus 5 default.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-026",
+    "target": "claude-opus-5.5",
+    "category": "migration",
+    "status": "recommended",
+    "en": "Recalibrate effort instead of carrying forward the value selected for Opus 5; adjust effort before adding prompts to reduce thinking.",
+    "ja": "Opus 5のeffort設定をそのまま移植せず再評価する。思考量を抑える際は指示追加よりeffort調整を優先する。",
+    "evidence": [
+      "opus55-guide"
+    ],
+    "scope": "Applies to supported effort configuration; local eval required.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-027",
+    "target": "claude-sonnet-5.5",
+    "category": "reasoning",
+    "status": "conditional",
+    "en": "For well-defined agentic coding start at medium; try high for harder or longer tasks, then evaluate cost and quality.",
+    "ja": "明確なエージェント実装タスクはmediumから、難しい・長いタスクはhighを試し費用と品質を評価する。",
+    "evidence": [
+      "sonnet55-guide"
+    ],
+    "scope": "Provider starting points for coding, not universal optimal settings.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-028",
+    "target": "claude-sonnet-5.5",
+    "category": "completion",
+    "status": "conditional",
+    "en": "If low or medium effort causes premature check-ins, evaluate higher effort or clarify the expected completion boundary; constrain scope at higher effort.",
+    "ja": "low/mediumで途中確認が増える場合はeffort引上げ又は完了境界の明確化を試す。高effortでは作業範囲の逸脱を防ぐ。",
+    "evidence": [
+      "sonnet55-guide"
+    ],
+    "scope": "Behavior-dependent; risky operations still require approval.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-029",
+    "target": "claude-sonnet-5.5",
+    "category": "verification",
+    "status": "recommended",
+    "en": "Require a real executable check of changed behavior; a syntax check alone or a command that never started is not equivalent evidence.",
+    "ja": "変更挙動を実際に通す検証を求める。構文確認だけや起動不能のコマンドは同等の証拠としない。",
+    "evidence": [
+      "sonnet55-guide"
+    ],
+    "scope": "Report blocked checks; no unapproved environment changes.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-030",
+    "target": "claude-haiku-5.5",
+    "category": "reasoning",
+    "status": "conditional",
+    "en": "Replace obsolete budget_tokens settings when migrating from Haiku 4.5 and compare supported effort levels.",
+    "ja": "Haiku 4.5から移行する際は旧budget_tokens設定を除き、対応するeffortを比較評価する。",
+    "evidence": [
+      "haiku55-guide"
+    ],
+    "scope": "Claude Haiku 5.5 API; budget_tokens requests can fail.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-031",
+    "target": "claude-haiku-5.5",
+    "category": "verification",
+    "status": "recommended",
+    "en": "Explicitly require an executable check before reporting coding changes complete, especially if the model tends to skip verification.",
+    "ja": "コード変更の完了報告前に実行可能な検証を明示し、検証省略が観測される場合に重点的に適用する。",
+    "evidence": [
+      "haiku55-guide"
+    ],
+    "scope": "Model-specific coding guidance; no mandatory independent review implied.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-032",
+    "target": "claude-fable-5.2",
+    "category": "reasoning",
+    "status": "conditional",
+    "en": "Start with high effort and retune against representative tasks instead of copying the previous model's level.",
+    "ja": "highを起点に代表タスクで調整し、旧モデルのeffortをそのまま流用しない。",
+    "evidence": [
+      "fable52-guide"
+    ],
+    "scope": "Claude Fable 5.2 API starting point.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-033",
+    "target": "claude-fable-5.2",
+    "category": "completion",
+    "status": "recommended",
+    "en": "Name routine steps that need no additional approval, narrow obsolete stopping conditions, and retain confirmation for risky or irreversible actions.",
+    "ja": "追加承認不要な通常手順を明示し、不要な停止条件を限定する。危険・不可逆な操作の承認は維持する。",
+    "evidence": [
+      "fable52-guide"
+    ],
+    "scope": "Only within existing authorization; does not relax policy.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-034",
+    "target": "claude-fable-5.2",
+    "category": "delegation",
+    "status": "conditional",
+    "en": "If delegation exceeds task needs, first revisit standing instructions in agent files and skills; remove unnecessary delegation requirements after evaluation.",
+    "ja": "委譲が過剰な場合はAGENTS.mdやSkills等の常設委譲指示を見直し、評価で不要と判断した指示を除く。",
+    "evidence": [
+      "fable52-guide"
+    ],
+    "scope": "Behavior-dependent; independent review remains appropriate where justified.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-035",
+    "target": "claude-fable-5.2",
+    "category": "context",
+    "status": "conditional",
+    "en": "Use append-only conversation history outside supported context editing or compaction; rewriting earlier messages can invalidate preserved thinking blocks.",
+    "ja": "対応するコンテキスト編集・圧縮を除き会話履歴を追記型に保つ。過去メッセージの書換えは保存済みthinking blockを無効化し得る。",
+    "evidence": [
+      "fable52-guide"
+    ],
+    "scope": "API harness integration only, not repository instructions.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-036",
+    "target": "claude-mythos-5.2",
+    "category": "migration",
+    "status": "conditional",
+    "en": "Consult the shared Fable 5.2/Mythos 5.2 prompting guide when migrating and validate model-specific behavior against your own tasks.",
+    "ja": "移行時にはFable 5.2/Mythos 5.2共通の公式プロンプトガイドを参照し、対象モデルで挙動を検証する。",
+    "evidence": [
+      "fable52-guide"
+    ],
+    "scope": "Guide covers both models; no claim of general access or identical behavior.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-037",
+    "target": "kimi-k2.7-code",
+    "category": "reasoning",
+    "status": "conditional",
+    "en": "Treat thinking and preserved thinking as enabled in the provider's documented K2.7 Code API; do not assume instant mode is available.",
+    "ja": "K2.7 Code公式APIではthinkingとpreserved thinkingが有効という仕様に従い、instant modeの利用を前提にしない。",
+    "evidence": [
+      "kimi-k27-card"
+    ],
+    "scope": "Official model card; third-party endpoints and lifecycle may differ.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-038",
+    "target": "kimi-k2.7-code",
+    "category": "reasoning",
+    "status": "conditional",
+    "en": "For compatible self-hosted vLLM/SGLang deployments use the provider's generation recommendations as an evaluation baseline, temperature 1.0 and top_p 0.95.",
+    "ja": "対応するvLLM/SGLang環境では提供元推奨のtemperature 1.0、top_p 0.95を評価の起点にする。",
+    "evidence": [
+      "kimi-k27-card"
+    ],
+    "scope": "Self-hosted inference settings, not an AGENTS.md rule or universal API setting.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-039",
+    "target": "kimi-k3",
+    "category": "reasoning",
+    "status": "conditional",
+    "en": "Configure reasoning_effort with the supported low, high or max values; the model card documents max as default and thinking as always enabled.",
+    "ja": "reasoning_effortはlow/high/maxの対応値で設定する。モデルカードではmaxが既定でthinkingは常時有効。",
+    "evidence": [
+      "kimi-k3-card"
+    ],
+    "scope": "Official Kimi K3 interface; validate provider adapter compatibility.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-040",
+    "target": "kimi-k3",
+    "category": "tools",
+    "status": "recommended",
+    "en": "Preserve complete assistant messages across model turns and tool continuations, including reasoning_content and tool_calls.",
+    "ja": "複数ターン・ツール継続時にreasoning_contentとtool_callsを含むassistant messageを保持する。",
+    "evidence": [
+      "kimi-k3-card"
+    ],
+    "scope": "API integration requirement; do not expose or publicly log reasoning.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-041",
+    "target": "glm-5.2",
+    "category": "reasoning",
+    "status": "conditional",
+    "en": "Use the documented high or max reasoning_effort options; do not assume GLM-5.3's low setting exists in GLM-5.2.",
+    "ja": "GLM-5.2ではhigh/maxの公式対応値を利用し、GLM-5.3のlowが使えると仮定しない。",
+    "evidence": [
+      "glm5-card"
+    ],
+    "scope": "Model card; max is the documented default.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-042",
+    "target": "glm-5.3",
+    "category": "reasoning",
+    "status": "conditional",
+    "en": "Set low or high explicitly when evaluating cost-sensitive work; the documented default is max, also used for benchmark reproduction.",
+    "ja": "費用を抑える評価ではlow/highを明示する。モデルカード上の既定値maxはベンチマーク再現にも使われる。",
+    "evidence": [
+      "glm5-card"
+    ],
+    "scope": "GLM-5.3 and 5.3 Flash; provider support required.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-043",
+    "target": "deepseek-v4-pro",
+    "category": "reasoning",
+    "status": "conditional",
+    "en": "Do not tune thinking behavior via temperature or penalties; in thinking mode top_p is fixed according to tool availability.",
+    "ja": "thinking時にtemperatureやpenaltyで推論を調整しない。top_pはツール利用可否に応じて固定される。",
+    "evidence": [
+      "deepseek-thinking"
+    ],
+    "scope": "Current DeepSeek V4 Pro API, not third-party inference servers.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-044",
+    "target": "deepseek-flash",
+    "category": "reasoning",
+    "status": "conditional",
+    "en": "Use documented thinking and effort controls; in thinking mode top_p below 0.95 is clamped to 0.95.",
+    "ja": "公式thinking/effort制御を使用する。thinking時のtop_pは0.95未満が0.95に補正される。",
+    "evidence": [
+      "deepseek-thinking"
+    ],
+    "scope": "Current deepseek-flash API identifier; do not infer alias equivalence or lifecycle.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-045",
+    "target": "gemini-3",
+    "category": "prompting",
+    "status": "recommended",
+    "en": "Put key behavioral constraints first, use consistent delimiters, and place specific questions after large context blocks.",
+    "ja": "重要な行動制約は先に置き、区切り形式を統一し、大量の文脈の後に具体的な質問を配置する。",
+    "evidence": [
+      "gemini-prompting"
+    ],
+    "scope": "Gemini 3 prompting guidance; distinguish task data from instructions.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-046",
+    "target": "gemini-3",
+    "category": "reasoning",
+    "status": "conditional",
+    "en": "For Gemini 3.6 and later remove custom temperature, top_p and top_k from requests; earlier Gemini 3 models should use defaults.",
+    "ja": "Gemini 3.6以降ではtemperature/top_p/top_kの独自指定を除く。以前のGemini 3では既定値を使用する。",
+    "evidence": [
+      "gemini-prompting"
+    ],
+    "scope": "Version-specific Gemini API parameter guidance, not an instruction-file rule.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-047",
+    "target": "opencode",
+    "category": "persistent-instructions",
+    "status": "recommended",
+    "en": "Avoid assuming configured instructions override AGENTS.md; initial sources are combined and nested instructions are discovered during exploration.",
+    "ja": "設定した指示がAGENTS.mdを上書きすると仮定しない。初期指示は結合され、下位指示は探索時に発見される。",
+    "evidence": [
+      "opencode-instructions"
+    ],
+    "scope": "Current OpenCode docs; check installed release.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-048",
+    "target": "opencode",
+    "category": "context",
+    "status": "conditional",
+    "en": "Start a new session if an already-discovered nested AGENTS.md must take effect immediately after editing.",
+    "ja": "読み込み済みの下位AGENTS.mdを編集し、即時反映が必須なら新規セッションを開始する。",
+    "evidence": [
+      "opencode-instructions"
+    ],
+    "scope": "Nested-file behavior differs from global/upward instruction refresh.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-049",
+    "target": "opencode",
+    "category": "security",
+    "status": "recommended",
+    "en": "Use policy denies for hard boundaries; a policy allow only lifts a prior deny and does not grant permission beyond the agent's own rules.",
+    "ja": "強制境界にはpolicy denyを利用する。policy allowは先行denyの解除に留まり、エージェント自身の権限を超えて許可しない。",
+    "evidence": [
+      "opencode-policies"
+    ],
+    "scope": "Current OpenCode policy semantics; do not substitute prompts for enforcement.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-050",
+    "target": "opencode",
+    "category": "skills",
+    "status": "recommended",
+    "en": "Place reusable task instructions in SKILL.md with a description of triggering conditions and verify skill permission settings.",
+    "ja": "再利用する手順をSKILL.mdへ置き、適用条件をdescriptionで示し、skill権限設定を確認する。",
+    "evidence": [
+      "opencode-skills"
+    ],
+    "scope": "OpenCode skill discovery; actual paths and autoinvoke depend on configuration.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-051",
+    "target": "superpowers",
+    "category": "workflow",
+    "status": "conditional",
+    "en": "Use the upstream workflow of design agreement, implementation planning and test-driven execution when that methodology is adopted.",
+    "ja": "Superpowersを採用する場合は設計合意、実装計画、TDDによる実行という上流の方法論を利用する。",
+    "evidence": [
+      "superpowers-guide"
+    ],
+    "scope": "Framework-specific; not a universal rule or authorization for repeated review cycles.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-052",
+    "target": "superpowers",
+    "category": "skills",
+    "status": "conditional",
+    "en": "Use the framework's composable skills rather than reproducing the complete workflow in every persistent instruction file.",
+    "ja": "フレームワークの組み合わせ可能なSkillsを利用し、全手順を常設指示へ複製しない。",
+    "evidence": [
+      "superpowers-guide",
+      "agent-skills"
+    ],
+    "scope": "Agent Compass synthesis of upstream methodology and skill specification; not verbatim vendor requirement.",
     "local_eval": "not_verified",
     "reviewed": "2026-11-27"
   }
