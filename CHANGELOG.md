@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1 — 2026-11-27
+
+- Agent-ready llms.txt and full indexes, English/Japanese exact-target Markdown, static JSON API v1.
+- Snapshot manifest with digests, scoped evidence and generator bundle index.
+- Portable Agent Compass Skill and reproducible export tests.
+
 ## 0.5.0 — 2026-11-27
 
 - Static bilingual knowledge portal with search, filters, comparisons and evidence links.

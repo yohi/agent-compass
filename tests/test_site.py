@@ -22,7 +22,8 @@ class SiteTests(unittest.TestCase):
             self.assertEqual(len(metadata["profiles"]), count)
             self.assertEqual(set(x.name for x in dest.iterdir()),
                              {"index.html", "style.css", "app.js", "audit.js",
-                              "bundles", "data.json", ".nojekyll"})
+                              "bundles", "data.json", ".nojekyll", "knowledge", "api", "skills",
+                              "llms.txt", "llms.ja.txt", "llms-full.txt", "llms-full.ja.txt"})
             for item in metadata["profiles"].values():
                 raw = (dest / item["path"]).read_bytes()
                 self.assertEqual(hashlib.sha256(raw).hexdigest(), item["sha256"])

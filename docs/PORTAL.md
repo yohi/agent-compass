@@ -25,6 +25,11 @@ Open http://localhost:8000/. Build output directory must be new; choose a
 different directory or explicitly remove your old generated preview first.
 Use HTTPS or localhost for browser cryptographic digest verification.
 
+## Agent-ready exports
+
+The same build publishes llms.txt, scoped Markdown, static JSON API v1 and a
+portable Agent Skill. See [agent interface](AGENT_INTERFACE.md). No separate data store.
+
 ## Features and boundaries
 
 - Japanese/English navigation and curated recommendations; English scope and

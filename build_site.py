@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import shutil
 
+import agent_exports
 import auditor
 import compass
 import generator
@@ -60,6 +61,7 @@ def build(output):
                           "max_findings": auditor.MAX_FINDINGS},
                 "profiles": profiles}
     write_json(output / "data.json", metadata)
+    agent_exports.export(output, metadata)
     (output / ".nojekyll").touch()
     print(f"Built {len(practices)} practices, {len(sources)} sources, "
           f"{len(targets)} targets and {len(profiles)} generator bundles")
