@@ -41,6 +41,8 @@ false positives or failures. Inspect the linked official source before adoption.
 The initial source set is not exhaustive; discovery can propose new official sources
 and model mentions but does not automatically add them.
 See [Change intelligence](docs/CHANGE_INTELLIGENCE.md) for Phase 2 operation.
+Discovery issue summaries are bounded; full candidate batches are archived in comments
+before state advances. Local scans append to the state file's `.candidates.jsonl` companion.
 
 The monitor uses the issue as durable state. Do not delete/edit its state marker;
 closing it does not reset it. A changed issue receives a comment; duplicate

@@ -156,6 +156,27 @@ class RestrictedRedirect(HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
+def error_reason(exc):
+    """Stable diagnostic codes; never publish arbitrary exception messages."""
+    from urllib.error import HTTPError, URLError
+    if isinstance(exc, HTTPError):
+        return "http_" + str(exc.code) if 100 <= exc.code <= 599 else "http_error"
+    if isinstance(exc, (TimeoutError,)) or (
+            isinstance(exc, URLError) and isinstance(exc.reason, TimeoutError)):
+        return "timeout"
+    if isinstance(exc, UnicodeError):
+        return "decode_error"
+    if isinstance(exc, ValueError):
+        return {
+            "unapproved HTTPS endpoint": "endpoint_not_allowed",
+            "unsupported content type": "unsupported_content_type",
+            "source exceeds size limit": "size_limit",
+            "expected text, got HTML": "unexpected_html",
+            "empty or unexpectedly short source": "empty_or_short_content",
+        }.get(str(exc), "invalid_response")
+    return "network_or_io_error"
+
+
 def fetch_document(source, hosts):
     url = safe_url(source["url"], hosts)
     request = Request(url, headers={"User-Agent": "AgentCompass/0.1 (public documentation monitor)",
@@ -203,9 +224,11 @@ def monitor(sources, previous, fetcher=fetch):
         except (OSError, ValueError, UnicodeError, TimeoutError) as exc:
             # Record only exception class, never remote body, URL params or credentials.
             record = {"url": source["url"], "status": "error", "error": type(exc).__name__,
-                      "fingerprint": baseline}
-            if old.get("status") != "error" or old.get("error") != record["error"]:
-                events.append({"id": key, "event": "fetch_error", "error": record["error"]})
+                      "fingerprint": baseline, "reason": error_reason(exc)}
+            if (old.get("status") != "error" or old.get("error") != record["error"]
+                    or old.get("reason") != record["reason"]):
+                events.append({"id": key, "event": "fetch_error", "error": record["error"],
+                               "reason": record["reason"]})
         state[key] = record
     for key in previous.keys() - sources.keys():
         events.append({"id": key, "event": "removed"})
@@ -274,7 +297,7 @@ def summary(sources, state, events, practices=None):
         if event["event"] == "changed":
             line += f" (line delta {event['line_delta']:+}, new chunks {event['new_chunks']})"
         if event["event"] == "fetch_error":
-            line += " (" + event["error"] + ")"
+            line += " (" + event["error"] + ": " + event.get("reason", "unknown") + ")"
         lines.append(line)
         if event["event"] == "changed":
             lines.extend(proposal_lines(event, practices or {}, sources[key]))

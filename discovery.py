@@ -12,7 +12,9 @@ import compass
 TITLE = "Agent Compass — discovery state"
 MARKER = "<!-- agent-compass-discovery-v1\n"
 MAX_SEEN = 1500  # global; 96-bit candidate identities, no document bodies
-MAX_REPORT = 12   # per index; overflow explicit
+MAX_REPORT = 12   # summary only; complete candidates archived separately
+ARCHIVE_VERSION = 1
+COMMENT_LIMIT = 18000
 SAFE_PATH = re.compile(r"/[A-Za-z0-9._~/-]{0,240}\Z", re.ASCII)
 HINT = re.compile(
     r"model|prompt|agent|skill|instruct|reason|think|tool|migration|changelog|release|"
@@ -59,6 +61,9 @@ def candidate_url(href, base, index):
             return None
         if not any(path == p.rstrip("/") or path.startswith(p.rstrip("/") + "/")
                    for p in index["prefixes"]):
+            return None
+        # GitHub organization indexes: repository roots only, not issues/forks/etc.
+        if host == "github.com" and len(path.strip("/").split("/")) != 2:
             return None
         if not HINT.search(path):
             return None
@@ -119,6 +124,7 @@ def validate_state(state):
                         and isinstance(row["url"], str) and isinstance(row["seen"], list),
                         "invalid discovery record")
         seen = row["seen"]
+        compass.require(row.get("archive_version") in (None, ARCHIVE_VERSION), "invalid archive version")
         compass.require(all(isinstance(s, str) and KEY.fullmatch(s) for s in seen)
                         and len(seen) == len(set(seen)), "invalid discovery identities")
         total += len(seen)
@@ -137,16 +143,28 @@ def scan(indexes, previous, known_urls, fetcher=compass.fetch_document):
             host = urlsplit(index["url"]).hostname
             raw, fmt, base = fetcher(index, {host})
             candidates = extract(raw, fmt, base, index, known_urls)
-            new = sorted((v for k, v in candidates.items() if k not in seen))
-            record = {"url": index["url"], "status": "ok", "seen": sorted(seen | candidates.keys())}
-            if new or not old or old.get("status") == "error":
-                events.append({"id": key, "event": "discovered" if old.get("seen") else "initial_inventory",
-                               "count": len(new), "candidates": new[:MAX_REPORT]})
+            legacy = bool(old) and old.get("archive_version") != ARCHIVE_VERSION
+            # Re-observe current legacy candidates once. Identities no longer present cannot
+            # be reconstructed from hashes; count them explicitly rather than claiming recovery.
+            selected = candidates if legacy else {k: v for k, v in candidates.items() if k not in seen}
+            new = sorted(selected.values(), key=lambda pair: (pair[0] != "model-mention", pair[1]))
+            record = {"url": index["url"], "status": "ok", "seen": sorted(seen | candidates.keys()),
+                      "archive_version": ARCHIVE_VERSION}
+            if new or not old or legacy or old.get("status") == "error":
+                event_type = "archive_migration" if legacy else (
+                    "discovered" if old.get("seen") else "initial_inventory")
+                events.append({"id": key, "event": event_type, "count": len(new),
+                               "candidates": new,
+                               "legacy_unrecovered": len(seen - candidates.keys()) if legacy else 0})
         except (OSError, ValueError, UnicodeError, TimeoutError) as exc:
             record = {"url": index["url"], "status": "error", "seen": sorted(seen),
-                      "error": type(exc).__name__}
-            if old.get("status") != "error" or old.get("error") != record["error"]:
-                events.append({"id": key, "event": "fetch_error", "error": record["error"]})
+                      "error": type(exc).__name__, "reason": compass.error_reason(exc)}
+            if old.get("archive_version") == ARCHIVE_VERSION:
+                record["archive_version"] = ARCHIVE_VERSION
+            if (old.get("status") != "error" or old.get("error") != record["error"]
+                    or old.get("reason") != record["reason"]):
+                events.append({"id": key, "event": "fetch_error", "error": record["error"],
+                               "reason": record["reason"]})
         state[key] = record
     for key in sorted(previous.keys() - indexes.keys()):
         events.append({"id": key, "event": "removed"})
@@ -167,22 +185,49 @@ def report(indexes, state, events):
         idx = indexes[key]
         lines.append(f"- [{key}]({idx['url']}) ({idx['target']}): {event['event']}")
         if "error" in event:
-            lines.append("  - " + event["error"])
+            lines.append("  - " + event["error"] + ": " + event.get("reason", "unknown"))
         if "candidates" in event:
-            lines.append(f"  - {event['count']} previously unseen candidates; review scope and official evidence.")
-            for kind, value in event["candidates"]:
+            lines.append(f"  - {event['count']} candidates to archive; review scope and official evidence.")
+            if event.get("legacy_unrecovered"):
+                lines.append(f"  - {event['legacy_unrecovered']} legacy identities not currently rediscovered "
+                             "(possibly filtered or removed); original values unknown.")
+            for kind, value in event["candidates"][:MAX_REPORT]:
                 if kind == "link":
                     lines.append(f"  - [{value}]({value}) — source candidate")
                 else:
                     lines.append(f"  - \x60{value}\x60 — model mention; verify exact identity and release status")
-            if event["count"] > len(event["candidates"]):
-                lines.append(f"  - {event['count']-len(event['candidates'])} more in linked index (display limit).")
+            if event["count"] > MAX_REPORT:
+                lines.append(f"  - {event['count']-MAX_REPORT} more in complete candidate archive "
+                             "(issue comments or local archive).")
     if not events:
         lines.append("No new candidate identities or status transitions.")
     lines += ["", "Outstanding failures: " +
               (", ".join(k for k, v in state.items() if v["status"] == "error") or "none"),
               "Adoption: verify the official source, then add/update a scoped registry record if warranted."]
     return "\n".join(lines) + "\n"
+
+
+def archive_comments(indexes, events):
+    """Complete, bounded candidate batches; each record carries its index and identity."""
+    comments = []
+    for event in events:
+        if not event.get("candidates"):
+            continue
+        key = event["id"]
+        header = f"## Complete candidate archive — {key}\n\nSource: {indexes[key]['url']}\n\n"
+        header += "Unverified candidates, not recommendations or release announcements.\n\n"
+        lines = []
+        for kind, value in event["candidates"]:
+            ident = identity(kind, value)
+            line = f"- `{ident}` | {kind} | {value}\n"
+            compass.require(len(header) + len(line) <= COMMENT_LIMIT, "candidate too large")
+            if len(header) + sum(map(len, lines)) + len(line) > COMMENT_LIMIT:
+                comments.append(header + "".join(lines))
+                lines = []
+            lines.append(line)
+        if lines:
+            comments.append(header + "".join(lines))
+    return comments
 
 
 def read_state(body):
@@ -207,12 +252,16 @@ def github(repo, indexes, known_urls):
     if issue is None or state != previous:
         body = message + "\n" + MARKER + json.dumps(state, separators=(",", ":")) + "\n-->\n"
         compass.require(len(body) < 60000, "discovery state exceeds safe issue size")
+        comments = archive_comments(indexes, events)
         if issue is None:
-            compass.gh("--method", "POST", endpoint, payload={"title": TITLE, "body": body})
-        else:
-            number = issue["number"]
-            compass.gh("--method", "POST", f"{endpoint}/{number}/comments", payload={"body": message})
-            compass.gh("--method", "PATCH", f"{endpoint}/{number}", payload={"body": body})
+            # Bootstrap with empty state: an interrupted archive never marks candidates seen.
+            issue = compass.gh("--method", "POST", endpoint, payload={
+                "title": TITLE, "body": "Archive initialization pending.\n\n" + MARKER + "{}\n-->\n"})
+        number = issue["number"]
+        for comment in comments:
+            compass.gh("--method", "POST", f"{endpoint}/{number}/comments", payload={"body": comment})
+        compass.gh("--method", "POST", f"{endpoint}/{number}/comments", payload={"body": message})
+        compass.gh("--method", "PATCH", f"{endpoint}/{number}", payload={"body": body})
     return int(any(r["status"] == "error" for r in state.values()))
 
 
@@ -233,6 +282,13 @@ def main(argv=None):
     previous = compass.read_json(path) if path.exists() else {}
     state, events = scan(indexes, previous, known)
     print(report(indexes, state, events))
+    # Append-only local archive, persisted before advancing deduplication state.
+    archive = path.with_name(path.name + ".candidates.jsonl")
+    with archive.open("a", encoding="utf-8") as stream:
+        for event in events:
+            for kind, value in event.get("candidates", []):
+                stream.write(json.dumps({"index": event["id"], "id": identity(kind, value),
+                                         "kind": kind, "value": value}, ensure_ascii=False) + "\n")
     compass.write_json(path, state)
     return int(any(r["status"] == "error" for r in state.values()))
 

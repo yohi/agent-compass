@@ -38,9 +38,17 @@ Discovery initial inventory includes old links and model mentions; later reports
 show previously unseen identities, not release dates. A mention does not establish
 availability, version, lifecycle, or suitability. A discovery index can omit
 documents or dynamically render incomplete content. Non-English or differently
-formatted model names can be missed. Index candidates are bounded: up to 12
-displayed per index/run with explicit omitted count; inspect the linked index
-for more. Seen identities (96-bit truncated SHA-256) are retained across runs;
+formatted model names can be missed. Index summaries display up to 12 candidates per index/run (model mentions first).
+All selected candidates are archived in bounded issue comments before the state
+is advanced. Local scans append to the companion JSONL file before updating state.
+Retries after interrupted writes can duplicate archive entries; deduplicate using
+(index, identity). Phase 2.0 migration re-observes currently available candidates
+once without resetting historical identities. Removed or filtered legacy
+identities cannot be reconstructed from hashes; their count is explicitly reported.
+GitHub organization indexes exclude repository navigation subpaths.
+Google uses the official AI Studio llms.txt index directly.
+Fetch diagnostics use fixed reason codes, not arbitrary exception text.
+Seen identities (96-bit truncated SHA-256) are retained across runs;
 a removed/reappearing candidate is not new. Total capacity is 1500; exceeding
 capacity fails before state replacement. Both state issues are operational
 metadata; do not edit or delete their markers. If capacity is reached, explicitly

@@ -114,6 +114,55 @@ class DiscoveryTests(unittest.TestCase):
             self.assertEqual(discovery.github("owner/repo", self.indexes, set()), 0)
             self.assertEqual(gh.call_count, 1)
 
+    def test_github_navigation_excluded(self):
+        index = {**self.index, "url": "https://github.com/MoonshotAI",
+                 "prefixes": ["/MoonshotAI/"]}
+        self.assertEqual(discovery.candidate_url("/MoonshotAI/Kimi-K3", index["url"], index),
+                         "https://github.com/MoonshotAI/Kimi-K3")
+        for tail in ("forks", "issues", "pulls", "stargazers", "graphs/commit-activity"):
+            self.assertIsNone(discovery.candidate_url("/MoonshotAI/Kimi-K3/" + tail,
+                                                      index["url"], index))
+
+    def test_legacy_migration_rearchives_current_and_preserves_missing(self):
+        state, _ = discovery.scan(self.indexes, {}, set(), self.fetch)
+        del state["x"]["archive_version"]
+        state["x"]["seen"].append("a" * 24)
+        migrated, events = discovery.scan(self.indexes, state, set(), self.fetch)
+        self.assertEqual(events[0]["event"], "archive_migration")
+        self.assertEqual(events[0]["count"], 2)
+        self.assertEqual(events[0]["legacy_unrecovered"], 1)
+        self.assertIn("a" * 24, migrated["x"]["seen"])
+        _, repeated = discovery.scan(self.indexes, migrated, set(), self.fetch)
+        self.assertEqual(repeated, [])
+
+    def test_archive_all_candidates_beyond_summary_limit(self):
+        candidates = [("link", f"https://example.org/models/gpt-{i}") for i in range(40)]
+        event = {"id": "x", "event": "initial_inventory", "count": len(candidates),
+                 "candidates": candidates}
+        with patch.object(discovery, "COMMENT_LIMIT", 1000):
+            comments = discovery.archive_comments(self.indexes, [event])
+        self.assertGreater(len(comments), 1)
+        self.assertTrue(all(len(c) <= 1000 for c in comments))
+        for kind, value in candidates:
+            self.assertEqual(sum(discovery.identity(kind, value) in c for c in comments), 1)
+
+    def test_archive_failure_does_not_advance_issue_state(self):
+        state, events = discovery.scan(self.indexes, {}, set(), self.fetch)
+        issue = {"title": discovery.TITLE, "user": {"login": "github-actions[bot]"},
+                 "number": 2, "body": discovery.MARKER + "{}\n-->"}
+        with patch.object(compass, "gh", side_effect=[[[issue]], OSError("archive failed")]) as gh, \
+                patch.object(discovery, "scan", return_value=(state, events)):
+            with self.assertRaises(OSError):
+                discovery.github("owner/repo", self.indexes, set())
+            self.assertEqual(gh.call_count, 2)
+            self.assertNotIn("PATCH", str(gh.call_args_list))
+
+    def test_safe_error_reasons(self):
+        self.assertEqual(compass.error_reason(ValueError("unapproved HTTPS endpoint")),
+                         "endpoint_not_allowed")
+        self.assertEqual(compass.error_reason(ValueError("remote secret")), "invalid_response")
+        self.assertEqual(compass.error_reason(TimeoutError()), "timeout")
+
     def test_text_index(self):
         raw = "Official reference " * 10 + "\n[guide](https://example.org/models/gpt-8)"
         result = discovery.extract(raw, "text", self.index["url"], self.index, set())
