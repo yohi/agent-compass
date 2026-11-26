@@ -1,0 +1,319 @@
+{
+  "schema_version": 1,
+  "harnesses": {
+    "codex": {
+      "native_file": "AGENTS.md",
+      "en": "Verify directory scope and override files in the installed Codex version.",
+      "ja": "利用するCodexのディレクトリ適用範囲とoverrideファイルを確認する。"
+    },
+    "claude-code": {
+      "native_file": "CLAUDE.md",
+      "en": "Verify the installed Claude Code's AGENTS.md support or configure its native CLAUDE.md entry point.",
+      "ja": "利用するClaude CodeのAGENTS.md対応を確認するか、ネイティブのCLAUDE.mdを入口として設定する。"
+    },
+    "opencode": {
+      "native_file": "AGENTS.md",
+      "en": "Verify installed OpenCode instruction loading and policy configuration.",
+      "ja": "利用するOpenCodeの指示読み込みとPolicy設定を確認する。"
+    },
+    "gemini-cli": {
+      "native_file": "GEMINI.md",
+      "en": "Adapt the draft to the installed Gemini CLI's configured context filename.",
+      "ja": "利用するGemini CLIのコンテキストファイル名の設定に合わせて適用する。"
+    },
+    "cursor": {
+      "native_file": ".cursor/rules/ or AGENTS.md (verify support)",
+      "en": "Select a supported instruction format and scope it to the relevant files.",
+      "ja": "対応する指示形式を選択し、必要なファイル範囲に限定する。"
+    },
+    "github-copilot": {
+      "native_file": ".github/copilot-instructions.md (verify surface)",
+      "en": "Check instruction support for the particular Copilot surface before adoption.",
+      "ja": "利用するCopilot機能の指示形式対応状況を確認してから採用する。"
+    }
+  },
+  "frameworks": [
+    "superpowers"
+  ],
+  "placements": [
+    {
+      "id": "BP-001",
+      "placement": "author-guidance"
+    },
+    {
+      "id": "BP-002",
+      "placement": "instruction",
+      "instruction": {
+        "en": "Use relevant skills and load detailed reference material only as needed.",
+        "ja": "関連するSkillsを利用し、詳細な参考資料は必要に応じて読む。"
+      }
+    },
+    {
+      "id": "BP-003",
+      "placement": "author-guidance"
+    },
+    {
+      "id": "BP-004",
+      "placement": "author-guidance"
+    },
+    {
+      "id": "BP-005",
+      "placement": "author-guidance"
+    },
+    {
+      "id": "BP-006",
+      "placement": "author-guidance"
+    },
+    {
+      "id": "BP-007",
+      "placement": "instruction",
+      "instruction": {
+        "en": "Use a concrete check appropriate to the requested behavior; distinguish unexecuted checks from successful checks.",
+        "ja": "依頼された挙動に適した具体的な検証を行い、未実行と成功を区別する。"
+      }
+    },
+    {
+      "id": "BP-008",
+      "placement": "author-guidance"
+    },
+    {
+      "id": "BP-009",
+      "placement": "author-guidance"
+    },
+    {
+      "id": "BP-010",
+      "placement": "author-guidance"
+    },
+    {
+      "id": "BP-011",
+      "placement": "author-guidance"
+    },
+    {
+      "id": "BP-012",
+      "placement": "author-guidance"
+    },
+    {
+      "id": "BP-013",
+      "placement": "author-guidance"
+    },
+    {
+      "id": "BP-014",
+      "placement": "configuration",
+      "configuration_kind": "integration"
+    },
+    {
+      "id": "BP-015",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-016",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-017",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-018",
+      "placement": "author-guidance"
+    },
+    {
+      "id": "BP-019",
+      "placement": "author-guidance"
+    },
+    {
+      "id": "BP-020",
+      "placement": "instruction",
+      "instruction": {
+        "en": "Before acting, identify the deliverable, permitted scope and decisions reserved for the user. Make reversible assumptions only within that scope.",
+        "ja": "実行前に成果物・許可範囲・ユーザー判断事項を把握する。可逆な仮定はその範囲内に限る。"
+      }
+    },
+    {
+      "id": "BP-021",
+      "placement": "instruction",
+      "instruction": {
+        "en": "Follow project conventions and compatibility requirements; verify the requested behavior and report any blocked checks.",
+        "ja": "プロジェクト規約と互換性要件を守り、要求された挙動を検証し、実行できなかった検証を報告する。"
+      }
+    },
+    {
+      "id": "BP-022",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-023",
+      "placement": "instruction",
+      "instruction": {
+        "en": "Complete routine authorized steps without unnecessary checkpoints; request a decision when the task exceeds authorization.",
+        "ja": "許可済みの通常手順は不要な中間承認なしに完遂し、許可範囲を超える場合は判断を求める。"
+      }
+    },
+    {
+      "id": "BP-024",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-025",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-026",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-027",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-028",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-029",
+      "placement": "instruction",
+      "instruction": {
+        "en": "Before reporting an implementation complete, run an executable check of the changed behavior; a syntax check or an unstarted command is not equivalent.",
+        "ja": "実装完了の報告前に変更挙動を実行可能な方法で検証する。構文検査だけや起動不能のコマンドを同等の証拠としない。"
+      }
+    },
+    {
+      "id": "BP-030",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-031",
+      "placement": "instruction",
+      "instruction": {
+        "en": "Before reporting coding work complete, run an executable check of the changed behavior or report why it could not be run.",
+        "ja": "コード変更の完了報告前に変更挙動を実行可能な方法で検証する。実行不能なら理由を報告する。"
+      }
+    },
+    {
+      "id": "BP-032",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-033",
+      "placement": "instruction",
+      "instruction": {
+        "en": "Perform routine authorized steps without extra approval; retain confirmation for risky or irreversible operations and stop at the agreed boundary.",
+        "ja": "許可済みの通常手順は追加承認なしに進める。危険・不可逆な操作の承認は維持し、合意した境界で停止する。"
+      }
+    },
+    {
+      "id": "BP-034",
+      "placement": "author-guidance"
+    },
+    {
+      "id": "BP-035",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-036",
+      "placement": "author-guidance"
+    },
+    {
+      "id": "BP-037",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-038",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-039",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-040",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-041",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-042",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-043",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-044",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-045",
+      "placement": "author-guidance"
+    },
+    {
+      "id": "BP-046",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-047",
+      "placement": "instruction",
+      "instruction": {
+        "en": "Account for combined instruction sources and nested instructions; do not assume additional configured instructions override AGENTS.md.",
+        "ja": "結合される指示源と下位指示を考慮し、追加設定の指示がAGENTS.mdを上書きすると仮定しない。"
+      }
+    },
+    {
+      "id": "BP-048",
+      "placement": "author-guidance"
+    },
+    {
+      "id": "BP-049",
+      "placement": "configuration",
+      "configuration_kind": "permissions"
+    },
+    {
+      "id": "BP-050",
+      "placement": "instruction",
+      "instruction": {
+        "en": "Use relevant permitted skills for reusable procedures; load details when needed.",
+        "ja": "再利用手順には許可された関連Skillsを使い、詳細は必要時に読む。"
+      }
+    },
+    {
+      "id": "BP-051",
+      "placement": "instruction",
+      "instruction": {
+        "en": "When the project has adopted Superpowers, use its applicable design, planning and test-driven implementation skills within the authorized task scope.",
+        "ja": "プロジェクトがSuperpowersを採用している場合、許可されたタスク範囲内で該当する設計・計画・TDDのSkillsを利用する。"
+      }
+    },
+    {
+      "id": "BP-052",
+      "placement": "instruction",
+      "instruction": {
+        "en": "Prefer the selected framework's skills to duplicating complete procedures in standing instructions.",
+        "ja": "常設指示に全手順を重複記載せず、採用したフレームワークのSkillsを利用する。"
+      }
+    }
+  ]
+}

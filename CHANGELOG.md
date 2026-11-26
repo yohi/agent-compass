@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 — 2026-11-27
+
+- Offline AGENTS.md draft generator with explicit practice placement and exact target selection.
+- Separate configuration advice and traceable evidence; no implicit inheritance or installation.
+- English/Japanese output and exclusive new-directory creation.
+
 ## 0.3.0 — 2026-11-27
 
 - Curated 35 additional scoped practices from official guidance and model cards.

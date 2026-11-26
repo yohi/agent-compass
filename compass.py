@@ -342,6 +342,12 @@ def main(argv=None):
     mon = sub.add_parser("monitor")
     mon.add_argument("--state", required=True, type=Path)
     mon.add_argument("--output", required=True, type=Path)
+    gen = sub.add_parser("generate", help="generate an offline instruction draft")
+    gen.add_argument("--harness", required=True)
+    gen.add_argument("--model")
+    gen.add_argument("--framework")
+    gen.add_argument("--language", choices=("ja", "en"), default="ja")
+    gen.add_argument("--output-dir", type=Path, help="new directory for draft, configuration and evidence")
     github = sub.add_parser("github-monitor")
     github.add_argument("--repo", required=True)
     args = parser.parse_args(argv)
@@ -349,6 +355,8 @@ def main(argv=None):
     if args.cmd == "validate":
         from discovery import load_indexes
         indexes = load_indexes(targets)
+        from generator import load_generation
+        load_generation(targets, practices)
         print(f"{len(sources)} sources, {len(targets)} targets, {len(practices)} practices; "
               f"{len(indexes)} discovery indexes")
     elif args.cmd == "render":
@@ -362,6 +370,17 @@ def main(argv=None):
         require(args.target in targets, "unknown target")
         selected = {k: p for k, p in practices.items() if p["target"] == args.target}
         print(render(sources, {args.target: targets[args.target]}, selected))
+    elif args.cmd == "generate":
+        from generator import generate, load_generation, write_bundle
+        data = load_generation(targets, practices)
+        documents = generate(sources, targets, practices, data, args.harness, args.model,
+                             args.framework, args.language)
+        if args.output_dir is None:
+            print(documents["AGENTS.draft.md"], end="")
+            print("Draft only; use --output-dir for separate configuration and evidence.", file=sys.stderr)
+        else:
+            write_bundle(args.output_dir, documents)
+            print(f"Draft bundle created: {args.output_dir}")
     elif args.cmd == "monitor":
         require(args.state.resolve() != args.output.resolve(), "state/output must differ")
         previous = read_json(args.state) if args.state.exists() else {}

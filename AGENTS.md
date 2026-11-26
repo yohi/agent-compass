@@ -17,6 +17,8 @@ See README.md for the operating model and registry/ for canonical data.
 - No automatic adoption of source changes, raw document redistribution, or paid APIs.
 - Discovery links and model mentions are candidates, not verified recommendations.
 - Topic changes are lexical hints; never claim semantic changes or deprecation without evidence.
+- Generator output is a proposal; never auto-install it or overwrite an existing file.
+- Classify new practices explicitly before allowing insertion into generated instructions.
 - External writes and new tasks require Human Owner approval.
 - Validate proportionately; stop when the approved scope is complete.
 - Do not initiate repeated independent reviews or corrections automatically.

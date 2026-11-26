@@ -17,6 +17,8 @@ completion boundaries, verification, tool-state handling, and migration.
    Preserve earlier model records unless official evidence warrants a status change.
    For deprecated/superseded practices, explain the reason and replacement in scope.
 5. Keep local_eval as not_verified unless a reproducible local evaluation exists.
+   For generator inclusion, explicitly classify the practice in registry/generation.json;
+   unclassified practices remain evidence-only.
 6. Regenerate docs and run the existing validation suite. Commit only the approved
    batch. No automatic adoption or changes to consuming repositories.
 

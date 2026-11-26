@@ -7,6 +7,7 @@ AIコーディングエージェント・LLMの公式推奨事項を継続管理
 - [Source registry](registry/sources.json) / [Target registry](registry/targets.json)
 - [Practice registry](registry/practices.json)
 - [Curation workflow and coverage](docs/CURATION.md)
+- [AGENTS.md Generator](docs/GENERATOR.md)
 - [Monitor workflow](.github/workflows/monitor.yml) / [monitor state and notifications](../../issues)
 
 ## Quick start
@@ -18,12 +19,17 @@ python compass.py validate
 python compass.py render --check
 python -m unittest discover -s tests -v
 python compass.py show --target gpt-6-astra
+python compass.py generate --harness opencode --model kimi-k3 --framework superpowers --output-dir ./compass-draft
 python compass.py monitor --state .local-state.json --output .local-report.json
 python discovery.py --state .local-discovery.json
 # Optional developer tools:
 uv run --extra dev pytest
 uv run --extra dev ruff check .
 ```
+
+The generator creates a draft, separate configuration advice and evidence in a new
+output directory. It never installs or overwrites existing AGENTS.md files.
+See [generator usage](docs/GENERATOR.md).
 
 ## Operating model / 運用
 
