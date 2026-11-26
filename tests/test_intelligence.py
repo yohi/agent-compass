@@ -68,6 +68,8 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(events[0]["event"], "initial_inventory")
         self.assertEqual(events[0]["count"], 2)
         self.assertIn(("link", "https://example.org/models/gpt-7"), events[0]["candidates"])
+        self.assertIn(("model-mention", "gpt-7"), events[0]["candidates"])
+        self.assertNotIn("externalduplicate", json.dumps(events))
         self.assertNotIn("evil.test", json.dumps(events))
         self.assertNotIn("gpt-7", json.dumps(state))
         unchanged, events = discovery.scan(self.indexes, state, set(), self.fetch)

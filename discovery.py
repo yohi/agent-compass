@@ -71,13 +71,30 @@ def identity(kind, value):
     return hashlib.sha256((kind + "\0" + value).encode()).hexdigest()[:24]
 
 
+class DiscoveryText(compass.TextExtractor):
+    """Preserve link boundaries without changing Phase 1 page fingerprints."""
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "a":
+            self.append(" ")
+        super().handle_starttag(tag, attrs)
+
+    def handle_endtag(self, tag):
+        super().handle_endtag(tag)
+        if tag == "a":
+            self.append(" ")
+
+
 def extract(raw, fmt, base, index, known_urls):
-    content = compass.normalize(raw, fmt)
     if fmt == "html":
+        visible = DiscoveryText()
+        visible.feed(raw)
+        content = compass.normalize("".join(visible.main or visible.body), "text")
         parser = Links()
         parser.feed(raw)
         hrefs = parser.links
     else:
+        content = compass.normalize(raw, fmt)
         hrefs = re.findall(r"\]\(([^)\s]+)\)", raw)
         hrefs += re.findall(r"https://[A-Za-z0-9.-]+/[A-Za-z0-9._~/-]+", raw)
     candidates = {}
