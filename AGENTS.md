@@ -15,6 +15,8 @@ See README.md for the operating model and registry/ for canonical data.
 - Do not invent evidence, latest-model status or local evaluation results.
 - Preserve last successful observations on fetch failure; no false unchanged status.
 - No automatic adoption of source changes, raw document redistribution, or paid APIs.
+- Discovery links and model mentions are candidates, not verified recommendations.
+- Topic changes are lexical hints; never claim semantic changes or deprecation without evidence.
 - External writes and new tasks require Human Owner approval.
 - Validate proportionately; stop when the approved scope is complete.
 - Do not initiate repeated independent reviews or corrections automatically.

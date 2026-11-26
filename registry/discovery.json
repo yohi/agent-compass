@@ -1,0 +1,137 @@
+[
+  {
+    "id": "openai-models",
+    "target": "codex",
+    "url": "https://developers.openai.com/api/docs/models/all",
+    "format": "html",
+    "prefixes": [
+      "/api/docs/models/"
+    ],
+    "model_prefixes": [
+      "gpt-"
+    ],
+    "publisher": "OpenAI"
+  },
+  {
+    "id": "openai-guides",
+    "target": "codex",
+    "url": "https://developers.openai.com/api/docs/guides/prompt-engineering",
+    "format": "html",
+    "prefixes": [
+      "/api/docs/guides/",
+      "/blog/",
+      "/cookbook/"
+    ],
+    "model_prefixes": [
+      "gpt-"
+    ],
+    "publisher": "OpenAI"
+  },
+  {
+    "id": "anthropic-models",
+    "target": "claude",
+    "url": "https://platform.claude.com/docs/en/models/overview",
+    "format": "html",
+    "prefixes": [
+      "/docs/en/models/",
+      "/docs/en/build-with-claude/prompt-engineering/"
+    ],
+    "model_prefixes": [
+      "claude-"
+    ],
+    "publisher": "Anthropic"
+  },
+  {
+    "id": "anthropic-releases",
+    "target": "claude",
+    "url": "https://platform.claude.com/docs/en/release-notes/overview",
+    "format": "html",
+    "prefixes": [
+      "/docs/en/models/",
+      "/docs/en/build-with-claude/prompt-engineering/"
+    ],
+    "model_prefixes": [
+      "claude-"
+    ],
+    "publisher": "Anthropic"
+  },
+  {
+    "id": "google-models",
+    "target": "gemini",
+    "url": "https://ai.google.dev/gemini-api/docs",
+    "format": "html",
+    "prefixes": [
+      "/gemini-api/docs/"
+    ],
+    "model_prefixes": [
+      "gemini-"
+    ],
+    "publisher": "Google"
+  },
+  {
+    "id": "moonshot-index",
+    "target": "kimi",
+    "url": "https://github.com/MoonshotAI",
+    "format": "html",
+    "prefixes": [
+      "/MoonshotAI/"
+    ],
+    "model_prefixes": [
+      "kimi-"
+    ],
+    "publisher": "Moonshot AI"
+  },
+  {
+    "id": "zai-index",
+    "target": "glm",
+    "url": "https://docs.z.ai/llms.txt",
+    "format": "text",
+    "prefixes": [
+      "/guides/",
+      "/api-reference/"
+    ],
+    "model_prefixes": [
+      "glm-"
+    ],
+    "publisher": "Z.ai"
+  },
+  {
+    "id": "deepseek-releases",
+    "target": "deepseek",
+    "url": "https://api-docs.deepseek.com/updates/",
+    "format": "html",
+    "prefixes": [
+      "/guides/",
+      "/news/"
+    ],
+    "model_prefixes": [
+      "deepseek-"
+    ],
+    "publisher": "DeepSeek"
+  },
+  {
+    "id": "qwen-index",
+    "target": "qwen",
+    "url": "https://qwen.readthedocs.io/en/latest/",
+    "format": "html",
+    "prefixes": [
+      "/en/latest/"
+    ],
+    "model_prefixes": [
+      "qwen"
+    ],
+    "publisher": "Qwen"
+  },
+  {
+    "id": "opencode-releases",
+    "target": "opencode",
+    "url": "https://opencode.ai/changelog",
+    "format": "html",
+    "prefixes": [
+      "/docs/",
+      "/changelog"
+    ],
+    "model_prefixes": [],
+    "publisher": "OpenCode"
+  }
+]

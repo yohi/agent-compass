@@ -27,4 +27,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
-        run: python compass.py github-monitor --repo "$REPOSITORY"
+        run: |
+          set +e
+          python compass.py github-monitor --repo "$REPOSITORY"
+          monitor_status=$?
+          python discovery.py --repo "$REPOSITORY"
+          discovery_status=$?
+          if [ "$monitor_status" -ne 0 ] || [ "$discovery_status" -ne 0 ]; then
+            exit 1
+          fi

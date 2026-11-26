@@ -18,6 +18,7 @@ python compass.py render --check
 python -m unittest discover -s tests -v
 python compass.py show --target gpt-6-astra
 python compass.py monitor --state .local-state.json --output .local-report.json
+python discovery.py --state .local-discovery.json
 # Optional developer tools:
 uv run --extra dev pytest
 uv run --extra dev ruff check .
@@ -37,8 +38,9 @@ successful fetch establishes a baseline; failures retain the last successful
 fingerprint. No raw source bodies or model-generated claims are persisted.
 Chunk changes are approximate, not semantic diffs. Dynamic websites may cause
 false positives or failures. Inspect the linked official source before adoption.
-The initial source set is not exhaustive; provider indexes can signal new models
-but do not automatically add sources.
+The initial source set is not exhaustive; discovery can propose new official sources
+and model mentions but does not automatically add them.
+See [Change intelligence](docs/CHANGE_INTELLIGENCE.md) for Phase 2 operation.
 
 The monitor uses the issue as durable state. Do not delete/edit its state marker;
 closing it does not reset it. A changed issue receives a comment; duplicate
@@ -48,8 +50,8 @@ content, repository settings changes, or changes to other repositories.
 
 To adopt guidance: edit registry records with scoped evidence, regenerate docs,
 run tests, and use the normal human-approved Git workflow. Do not confuse
-provider guidance, project policy, and local evaluation. More monitoring coverage
-and semantic analysis are future work, not required for using this registry.
+provider guidance, project policy, and local evaluation. Topic hints are lexical,
+not LLM-based semantic analysis. They are not evidence of a changed recommendation.
 
 日本語・英語の一覧は上記リンク。取得失敗は「変更なし」と区別する。
 公式資料の変更を検出しても推奨事項を自動採択しない。

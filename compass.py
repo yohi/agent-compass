@@ -1,4 +1,4 @@
-"""Agent Compass Phase 1. External text is data, never executable instructions."""
+"""Agent Compass. External text is data, never executable instructions."""
 import argparse
 from collections import Counter
 import hashlib
@@ -10,6 +10,8 @@ import subprocess
 import sys
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+from signals import topic_signals, signal_changes, proposal_lines
 
 ROOT = Path(__file__).resolve().parent
 MAX_BYTES = 4 * 1024 * 1024
@@ -154,7 +156,7 @@ class RestrictedRedirect(HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-def fetch(source, hosts):
+def fetch_document(source, hosts):
     url = safe_url(source["url"], hosts)
     request = Request(url, headers={"User-Agent": "AgentCompass/0.1 (public documentation monitor)",
                                     "Accept": "text/html,text/plain,text/markdown"})
@@ -169,7 +171,13 @@ def fetch(source, hosts):
                 "expected text, got HTML")
         text = raw.decode(response.headers.get_content_charset() or "utf-8", errors="strict")
         fmt = "html" if content_type == "text/html" else "text"
-        return fingerprint(normalize(text, fmt))
+        return text, fmt, response.geturl()
+
+
+def fetch(source, hosts):
+    text, fmt, _ = fetch_document(source, hosts)
+    content = normalize(text, fmt)
+    return {**fingerprint(content), "topics": topic_signals(content)}
 
 
 def monitor(sources, previous, fetcher=fetch):
@@ -188,7 +196,8 @@ def monitor(sources, previous, fetcher=fetch):
                 changed = sum((Counter(new["chunks"]) - Counter(baseline["chunks"])).values())
                 events.append({"id": key, "event": "changed", "before": baseline["sha256"],
                                "after": new["sha256"], "line_delta": new["lines"] - baseline["lines"],
-                               "new_chunks": changed})
+                               "new_chunks": changed,
+                               "topic_changes": signal_changes(baseline.get("topics"), new.get("topics"))})
             if old.get("status") == "error":
                 events.append({"id": key, "event": "recovered"})
         except (OSError, ValueError, UnicodeError, TimeoutError) as exc:
@@ -241,6 +250,9 @@ def issue_state(body):
         require(ID.fullmatch(key) and record["status"] in {"ok", "error"}, "invalid state record")
         fp = record.get("fingerprint")
         if fp is not None:
+            if "topics" in fp:
+                from signals import validate_signals
+                require(validate_signals(fp["topics"]), "invalid topic fingerprints")
             require(HASH.fullmatch(fp["sha256"]) and isinstance(fp["lines"], int)
                     and fp["lines"] > 0 and len(fp["chunks"]) <= 24
                     and all(HASH.fullmatch(h) for h in fp["chunks"]), "invalid fingerprint")
@@ -249,7 +261,7 @@ def issue_state(body):
     return state
 
 
-def summary(sources, state, events):
+def summary(sources, state, events, practices=None):
     lines = ["## Source monitor", "", "Changes require human interpretation; no practices were adopted.",
              "", f"Successful: {sum(r['status']=='ok' for r in state.values())}/{len(state)}.", ""]
     if not events:
@@ -264,12 +276,14 @@ def summary(sources, state, events):
         if event["event"] == "fetch_error":
             line += " (" + event["error"] + ")"
         lines.append(line)
+        if event["event"] == "changed":
+            lines.extend(proposal_lines(event, practices or {}, sources[key]))
     lines += ["", "Outstanding fetch failures: " +
               (", ".join(k for k, r in state.items() if r["status"] == "error") or "none")]
     return "\n".join(lines) + "\n"
 
 
-def github_monitor(repo, sources):
+def github_monitor(repo, sources, practices=None):
     require(re.fullmatch(r"[\w.-]+/[\w.-]+", repo, re.ASCII), "invalid repository")
     endpoint = f"repos/{repo}/issues"
     pages = gh("--paginate", "--slurp", endpoint + "?state=all&per_page=100")
@@ -279,7 +293,7 @@ def github_monitor(repo, sources):
     issue = issues[0] if issues else None
     previous = issue_state(issue["body"]) if issue else {}
     state, events = monitor(sources, previous)
-    report = summary(sources, state, events)
+    report = summary(sources, state, events, practices)
     print(report)
     # Do not write on an unchanged run. On failure, retain the previous valid fingerprint.
     if issue is None or state != previous:
@@ -310,7 +324,10 @@ def main(argv=None):
     args = parser.parse_args(argv)
     sources, targets, practices = load_registry()
     if args.cmd == "validate":
-        print(f"{len(sources)} sources, {len(targets)} targets, {len(practices)} practices")
+        from discovery import load_indexes
+        indexes = load_indexes(targets)
+        print(f"{len(sources)} sources, {len(targets)} targets, {len(practices)} practices; "
+              f"{len(indexes)} discovery indexes")
     elif args.cmd == "render":
         path = ROOT / "docs" / "BEST_PRACTICES.md"
         content = render(sources, targets, practices)
@@ -328,10 +345,10 @@ def main(argv=None):
         state, events = monitor(sources, previous)
         write_json(args.output, {"events": events, "state": state})
         write_json(args.state, state)
-        print(summary(sources, state, events))
+        print(summary(sources, state, events, practices))
         return 1 if any(r["status"] == "error" for r in state.values()) else 0
     elif args.cmd == "github-monitor":
-        return github_monitor(args.repo, sources)
+        return github_monitor(args.repo, sources, practices)
     return 0
 
 
