@@ -38,7 +38,7 @@ APPROVAL = re.compile(
 FENCE = re.compile(r"^\s{0,3}(\x60{3,}|~{3,})")
 BULLET = re.compile(r"^\s*(?:[-*+]\s+|\d+[.)]\s+)(.+)$")
 PROTECT = re.compile(
-    r"\b(?:security|safety|permission|authorization|approval|secret|credential|production|"
+    r"\b(?:security|safety|permissions?|authorizations?|approvals?|secrets?|credentials?|production|"
     r"destructive|irreversible|sandbox|deny|must not|never|prohibit)\b"
     r"|(?:安全|権限|承認|機密|秘密|本番|破壊|不可逆|禁止|保護)", re.I)
 

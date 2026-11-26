@@ -38,6 +38,14 @@ class AuditorTests(unittest.TestCase):
         self.assertEqual(report["verdict"], "NOT_ASSESSED")
         self.assertNotIn("Preserve credentials securely.", json.dumps(report))
 
+    def test_protection_keywords_singular_and_plural(self):
+        for word in ("permission", "permissions", "approval", "approvals",
+                     "secret", "secrets", "credential", "credentials",
+                     "authorization", "authorizations"):
+            with self.subTest(word=word):
+                report = self.check(f"- Preserve {word} securely.\n- Preserve {word} securely.")
+                self.assertTrue(report["findings"][0]["protected_context"])
+
     def test_japanese_and_review_boundary(self):
         report = self.check("- 毎回独立レビューを行う。\n- すべての操作について承認を得る。\n"
                             "- 本番環境への変更は必ず承認を得る。\n",
