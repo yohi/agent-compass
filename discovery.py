@@ -127,6 +127,11 @@ def validate_state(state):
         compass.require(row.get("archive_version") in (None, ARCHIVE_VERSION), "invalid archive version")
         compass.require(all(isinstance(s, str) and KEY.fullmatch(s) for s in seen)
                         and len(seen) == len(set(seen)), "invalid discovery identities")
+        pending = row.get("legacy_pending", [])
+        compass.require(isinstance(pending, list)
+                        and all(isinstance(s, str) and KEY.fullmatch(s) for s in pending)
+                        and len(pending) == len(set(pending)) and set(pending) <= set(seen),
+                        "invalid legacy pending identities")
         total += len(seen)
     compass.require(total <= MAX_SEEN, "discovery state capacity exceeded")
     return state
@@ -146,21 +151,27 @@ def scan(indexes, previous, known_urls, fetcher=compass.fetch_document):
             legacy = bool(old) and old.get("archive_version") != ARCHIVE_VERSION
             # Re-observe current legacy candidates once. Identities no longer present cannot
             # be reconstructed from hashes; count them explicitly rather than claiming recovery.
-            selected = candidates if legacy else {k: v for k, v in candidates.items() if k not in seen}
+            pending = seen if legacy else set(old.get("legacy_pending", []))
+            selected = {k: v for k, v in candidates.items() if k not in seen or k in pending}
+            remaining = pending - candidates.keys()
             new = sorted(selected.values(), key=lambda pair: (pair[0] != "model-mention", pair[1]))
             record = {"url": index["url"], "status": "ok", "seen": sorted(seen | candidates.keys()),
                       "archive_version": ARCHIVE_VERSION}
+            if remaining:
+                record["legacy_pending"] = sorted(remaining)
             if new or not old or legacy or old.get("status") == "error":
                 event_type = "archive_migration" if legacy else (
                     "discovered" if old.get("seen") else "initial_inventory")
                 events.append({"id": key, "event": event_type, "count": len(new),
                                "candidates": new,
-                               "legacy_unrecovered": len(seen - candidates.keys()) if legacy else 0})
+                               "legacy_unrecovered": len(remaining)})
         except (OSError, ValueError, UnicodeError, TimeoutError) as exc:
             record = {"url": index["url"], "status": "error", "seen": sorted(seen),
                       "error": type(exc).__name__, "reason": compass.error_reason(exc)}
             if old.get("archive_version") == ARCHIVE_VERSION:
                 record["archive_version"] = ARCHIVE_VERSION
+            if old.get("legacy_pending"):
+                record["legacy_pending"] = old["legacy_pending"]
             if (old.get("status") != "error" or old.get("error") != record["error"]
                     or old.get("reason") != record["reason"]):
                 events.append({"id": key, "event": "fetch_error", "error": record["error"],
@@ -203,6 +214,8 @@ def report(indexes, state, events):
         lines.append("No new candidate identities or status transitions.")
     lines += ["", "Outstanding failures: " +
               (", ".join(k for k, v in state.items() if v["status"] == "error") or "none"),
+              "Outstanding legacy identities awaiting rediscovery: " +
+              str(sum(len(r.get("legacy_pending", [])) for r in state.values())),
               "Adoption: verify the official source, then add/update a scoped registry record if warranted."]
     return "\n".join(lines) + "\n"
 

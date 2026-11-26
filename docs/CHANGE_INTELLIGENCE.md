@@ -45,6 +45,7 @@ Retries after interrupted writes can duplicate archive entries; deduplicate usin
 (index, identity). Phase 2.0 migration re-observes currently available candidates
 once without resetting historical identities. Removed or filtered legacy
 identities cannot be reconstructed from hashes; their count is explicitly reported.
+They remain pending and will be archived if rediscovered under the current filters.
 GitHub organization indexes exclude repository navigation subpaths.
 Google uses the official AI Studio llms.txt index directly.
 Fetch diagnostics use fixed reason codes, not arbitrary exception text.

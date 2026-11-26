@@ -132,7 +132,22 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(events[0]["count"], 2)
         self.assertEqual(events[0]["legacy_unrecovered"], 1)
         self.assertIn("a" * 24, migrated["x"]["seen"])
+        self.assertEqual(migrated["x"]["legacy_pending"], ["a" * 24])
         _, repeated = discovery.scan(self.indexes, migrated, set(), self.fetch)
+        self.assertEqual(repeated, [])
+
+    def test_legacy_candidate_reappears_and_is_archived(self):
+        state, _ = discovery.scan(self.indexes, {}, set(), self.fetch)
+        del state["x"]["archive_version"]
+        old_id = discovery.identity("model-mention", "gpt-99")
+        state["x"]["seen"].append(old_id)
+        migrated, _ = discovery.scan(self.indexes, state, set(), self.fetch)
+        self.assertIn(old_id, migrated["x"]["legacy_pending"])
+        self.raw = self.raw.replace("</main>", " GPT-99 </main>")
+        recovered, events = discovery.scan(self.indexes, migrated, set(), self.fetch)
+        self.assertIn(("model-mention", "gpt-99"), events[0]["candidates"])
+        self.assertNotIn("legacy_pending", recovered["x"])
+        _, repeated = discovery.scan(self.indexes, recovered, set(), self.fetch)
         self.assertEqual(repeated, [])
 
     def test_archive_all_candidates_beyond_summary_limit(self):
