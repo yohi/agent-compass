@@ -1,0 +1,236 @@
+[
+  {
+    "id": "agents-md",
+    "publisher": "AGENTS.md",
+    "url": "https://agents.md/",
+    "target": "common",
+    "kind": "standard",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "agent-skills",
+    "publisher": "Agent Skills",
+    "url": "https://agentskills.io/specification",
+    "target": "common",
+    "kind": "standard",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "mcp",
+    "publisher": "Model Context Protocol",
+    "url": "https://blog.modelcontextprotocol.io/posts/2026-07-28/",
+    "target": "common",
+    "kind": "official-blog",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "superpowers",
+    "publisher": "Superpowers",
+    "url": "https://github.com/obra/superpowers/releases",
+    "target": "common",
+    "kind": "upstream-release",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "codex-instructions",
+    "publisher": "OpenAI",
+    "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md",
+    "target": "codex",
+    "kind": "official-docs",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "codex-harness",
+    "publisher": "OpenAI",
+    "url": "https://openai.com/index/harness-engineering/",
+    "target": "codex",
+    "kind": "official-blog",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "codex-prompting",
+    "publisher": "OpenAI",
+    "url": "https://developers.openai.com/cookbook/examples/gpt-5/codex_prompting_guide",
+    "target": "codex",
+    "kind": "official-guide",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "astra-prompting",
+    "publisher": "OpenAI",
+    "url": "https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra",
+    "target": "gpt-6-astra",
+    "kind": "official-guide",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "claude-code-practices",
+    "publisher": "Anthropic",
+    "url": "https://code.claude.com/docs/en/best-practices",
+    "target": "claude-code",
+    "kind": "official-docs",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "claude-code-memory",
+    "publisher": "Anthropic",
+    "url": "https://code.claude.com/docs/en/memory",
+    "target": "claude-code",
+    "kind": "official-docs",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "claude-prompting",
+    "publisher": "Anthropic",
+    "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices",
+    "target": "claude",
+    "kind": "official-guide",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "opencode-instructions",
+    "publisher": "OpenCode",
+    "url": "https://opencode.ai/docs/instructions/",
+    "target": "opencode",
+    "kind": "official-docs",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "opencode-models",
+    "publisher": "OpenCode",
+    "url": "https://opencode.ai/docs/models/",
+    "target": "opencode",
+    "kind": "official-docs",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "opencode-policies",
+    "publisher": "OpenCode",
+    "url": "https://opencode.ai/docs/policies/",
+    "target": "opencode",
+    "kind": "official-docs",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "gemini-cli-context",
+    "publisher": "Google",
+    "url": "https://raw.githubusercontent.com/google-gemini/gemini-cli/main/docs/cli/gemini-md.md",
+    "target": "gemini-cli",
+    "kind": "upstream-docs",
+    "checked": "2026-11-27",
+    "format": "text"
+  },
+  {
+    "id": "gemini-prompting",
+    "publisher": "Google",
+    "url": "https://aistudio.google.com/docs/prompting-strategies",
+    "target": "gemini",
+    "kind": "official-guide",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "cursor-rules",
+    "publisher": "Cursor",
+    "url": "https://prod.cursor.com/docs/rules",
+    "target": "cursor",
+    "kind": "official-docs",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "cursor-agent-guide",
+    "publisher": "Cursor",
+    "url": "https://cursor.com/blog/agent-best-practices",
+    "target": "cursor",
+    "kind": "official-guide",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "copilot-instructions",
+    "publisher": "GitHub",
+    "url": "https://docs.github.com/en/copilot/reference/custom-instructions-support",
+    "target": "github-copilot",
+    "kind": "official-docs",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "kimi-k25-card",
+    "publisher": "Moonshot AI",
+    "url": "https://raw.githubusercontent.com/MoonshotAI/Kimi-K2.5/master/README.md",
+    "target": "kimi-k2.5",
+    "kind": "upstream-model-card",
+    "checked": "2026-11-27",
+    "format": "text"
+  },
+  {
+    "id": "moonshot-discovery",
+    "publisher": "Moonshot AI",
+    "url": "https://github.com/MoonshotAI",
+    "target": "kimi",
+    "kind": "upstream-index",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "glm5-card",
+    "publisher": "Z.ai",
+    "url": "https://github.com/zai-org/GLM-5",
+    "target": "glm-5.3",
+    "kind": "upstream-model-card",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "zai-docs",
+    "publisher": "Z.ai",
+    "url": "https://docs.z.ai/llms.txt",
+    "target": "glm",
+    "kind": "official-index",
+    "checked": "2026-11-27",
+    "format": "text"
+  },
+  {
+    "id": "deepseek-thinking",
+    "publisher": "DeepSeek",
+    "url": "https://api-docs.deepseek.com/guides/thinking_mode/",
+    "target": "deepseek",
+    "kind": "official-docs",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "qwen-quickstart",
+    "publisher": "Qwen",
+    "url": "https://qwen.readthedocs.io/en/stable/getting_started/quickstart.html",
+    "target": "qwen",
+    "kind": "official-docs",
+    "checked": "2026-11-27",
+    "format": "html"
+  },
+  {
+    "id": "qwen-tools",
+    "publisher": "Qwen",
+    "url": "https://qwen.readthedocs.io/en/stable/framework/function_call.html",
+    "target": "qwen",
+    "kind": "official-docs",
+    "checked": "2026-11-27",
+    "format": "html"
+  }
+]

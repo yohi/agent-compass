@@ -1,0 +1,82 @@
+[
+  {
+    "id": "common",
+    "kind": "common",
+    "name": "Shared conventions"
+  },
+  {
+    "id": "codex",
+    "kind": "harness",
+    "name": "Codex"
+  },
+  {
+    "id": "claude-code",
+    "kind": "harness",
+    "name": "Claude Code"
+  },
+  {
+    "id": "opencode",
+    "kind": "harness",
+    "name": "OpenCode"
+  },
+  {
+    "id": "gemini-cli",
+    "kind": "harness",
+    "name": "Gemini CLI"
+  },
+  {
+    "id": "cursor",
+    "kind": "harness",
+    "name": "Cursor"
+  },
+  {
+    "id": "github-copilot",
+    "kind": "harness",
+    "name": "GitHub Copilot"
+  },
+  {
+    "id": "gpt-6-astra",
+    "kind": "model",
+    "name": "GPT-6 Astra"
+  },
+  {
+    "id": "claude",
+    "kind": "family",
+    "name": "Claude"
+  },
+  {
+    "id": "gemini",
+    "kind": "family",
+    "name": "Gemini"
+  },
+  {
+    "id": "kimi",
+    "kind": "family",
+    "name": "Kimi"
+  },
+  {
+    "id": "kimi-k2.5",
+    "kind": "model",
+    "name": "Kimi K2.5"
+  },
+  {
+    "id": "glm",
+    "kind": "family",
+    "name": "GLM"
+  },
+  {
+    "id": "glm-5.3",
+    "kind": "model",
+    "name": "GLM 5.3 / 5.3 Flash"
+  },
+  {
+    "id": "deepseek",
+    "kind": "family",
+    "name": "DeepSeek"
+  },
+  {
+    "id": "qwen",
+    "kind": "family",
+    "name": "Qwen"
+  }
+]

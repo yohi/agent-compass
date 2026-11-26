@@ -1,0 +1,241 @@
+[
+  {
+    "id": "BP-001",
+    "target": "common",
+    "category": "persistent-instructions",
+    "status": "recommended",
+    "en": "Put project-specific setup, test commands and conventions in a predictable agent instruction file.",
+    "ja": "プロジェクト固有のセットアップ・テスト・規約を、予測可能な指示ファイルに記載する。",
+    "evidence": [
+      "agents-md"
+    ],
+    "scope": "Format guidance; not a guarantee of every harness's loading behavior.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-002",
+    "target": "common",
+    "category": "skills",
+    "status": "recommended",
+    "en": "Keep detailed reusable procedures in skills and load their references as needed.",
+    "ja": "再利用する詳細手順はSkillsに分離し、必要時に参照する。",
+    "evidence": [
+      "agent-skills"
+    ],
+    "scope": "Applies to skills-compatible harnesses.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-003",
+    "target": "codex",
+    "category": "persistent-instructions",
+    "status": "conditional",
+    "en": "Use a short AGENTS.md as a map to deeper repository knowledge rather than a comprehensive manual.",
+    "ja": "AGENTS.mdを巨大な説明書ではなく、詳細なリポジトリ知識への索引として使う。",
+    "evidence": [
+      "codex-harness"
+    ],
+    "scope": "OpenAI engineering case study; not a universal line limit.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-004",
+    "target": "codex",
+    "category": "persistent-instructions",
+    "status": "recommended",
+    "en": "Account for directory scope and override files when configuring Codex instructions.",
+    "ja": "Codexの指示設定ではディレクトリの適用範囲とoverrideファイルを考慮する。",
+    "evidence": [
+      "codex-instructions"
+    ],
+    "scope": "Codex-specific loading rules.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-005",
+    "target": "gpt-6-astra",
+    "category": "migration",
+    "status": "recommended",
+    "en": "Reassess accumulated prompts and skills for this model; remove redundant constraints when evaluations support it.",
+    "ja": "このモデルへの移行時に既存指示を見直し、評価で不要と判断できる制約を削除する。",
+    "evidence": [
+      "astra-prompting"
+    ],
+    "scope": "Specific to the cited model guidance; do not remove security boundaries.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-006",
+    "target": "claude-code",
+    "category": "persistent-instructions",
+    "status": "recommended",
+    "en": "Keep persistent instructions concise and scope rules to the relevant part of the codebase.",
+    "ja": "常時指示を簡潔に保ち、ルールを対象コードの範囲に限定する。",
+    "evidence": [
+      "claude-code-practices",
+      "claude-code-memory"
+    ],
+    "scope": "Claude Code guidance.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-007",
+    "target": "claude-code",
+    "category": "verification",
+    "status": "recommended",
+    "en": "Provide a concrete check; use deterministic controls for rules that cannot have exceptions.",
+    "ja": "具体的な検証方法を示し、例外を許さないルールは決定的な制御で強制する。",
+    "evidence": [
+      "claude-code-practices"
+    ],
+    "scope": "A check is not equivalent to an authorization gate.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-008",
+    "target": "claude",
+    "category": "prompting",
+    "status": "recommended",
+    "en": "Use clear explicit instructions and evaluate model-specific behavior rather than assuming identical behavior across versions.",
+    "ja": "明確な指示を使い、世代間で同じ動作を仮定せずモデル別に評価する。",
+    "evidence": [
+      "claude-prompting"
+    ],
+    "scope": "Family-level guidance; model-specific exceptions need separate records.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-009",
+    "target": "opencode",
+    "category": "persistent-instructions",
+    "status": "recommended",
+    "en": "Use AGENTS.md and configured instruction sources according to OpenCode's documented loading rules.",
+    "ja": "OpenCodeの読み込み仕様に従いAGENTS.mdと設定された指示源を使う。",
+    "evidence": [
+      "opencode-instructions"
+    ],
+    "scope": "Harness-specific; verify installed version.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-010",
+    "target": "gemini-cli",
+    "category": "persistent-instructions",
+    "status": "recommended",
+    "en": "Use scoped GEMINI.md files and account for contextual discovery.",
+    "ja": "GEMINI.mdの適用範囲とコンテキストに応じた探索を考慮する。",
+    "evidence": [
+      "gemini-cli-context"
+    ],
+    "scope": "Gemini CLI only.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-011",
+    "target": "gemini",
+    "category": "prompting",
+    "status": "recommended",
+    "en": "Start with clear specific instructions and refine prompts against observed responses.",
+    "ja": "明確で具体的な指示から始め、応答の実測で改善する。",
+    "evidence": [
+      "gemini-prompting"
+    ],
+    "scope": "General Gemini prompt guidance.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-012",
+    "target": "cursor",
+    "category": "persistent-instructions",
+    "status": "recommended",
+    "en": "Use scoped project rules when instructions only apply to certain files.",
+    "ja": "特定ファイルだけに適用する指示は範囲指定されたプロジェクトルールに置く。",
+    "evidence": [
+      "cursor-rules"
+    ],
+    "scope": "Cursor rules; check active product version.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-013",
+    "target": "github-copilot",
+    "category": "persistent-instructions",
+    "status": "conditional",
+    "en": "Choose custom instruction types supported by the Copilot surface in use.",
+    "ja": "利用するCopilot機能が対応する指示ファイル形式を選択する。",
+    "evidence": [
+      "copilot-instructions"
+    ],
+    "scope": "Support differs across surfaces.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-014",
+    "target": "kimi-k2.5",
+    "category": "integration",
+    "status": "conditional",
+    "en": "Consider the provider's recommended Kimi Code CLI for this particular model.",
+    "ja": "このモデルについて提供元が推奨するKimi Code CLIを選択肢にする。",
+    "evidence": [
+      "kimi-k25-card"
+    ],
+    "scope": "Provider recommendation, not independent comparative evidence.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-015",
+    "target": "glm-5.3",
+    "category": "reasoning",
+    "status": "conditional",
+    "en": "Use the documented reasoning_effort parameter for GLM-5.3 and GLM-5.3-Flash on compatible endpoints.",
+    "ja": "対応するAPIではGLM-5.3/Flashのreasoning_effort設定を利用する。",
+    "evidence": [
+      "glm5-card"
+    ],
+    "scope": "Provider API capability, not evidence of the optimal effort.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-016",
+    "target": "deepseek",
+    "category": "tools",
+    "status": "conditional",
+    "en": "Follow the documented reasoning_content handling for tool-call continuations in thinking mode.",
+    "ja": "Thinking modeのツール呼び出し継続時はreasoning_contentの扱いを公式仕様に従う。",
+    "evidence": [
+      "deepseek-thinking"
+    ],
+    "scope": "API integration only; not an AGENTS.md rule.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  },
+  {
+    "id": "BP-017",
+    "target": "qwen",
+    "category": "reasoning",
+    "status": "conditional",
+    "en": "Use the supported thinking-mode control for the relevant model and chat template.",
+    "ja": "対象モデルとチャットテンプレートに対応するthinking mode制御を使用する。",
+    "evidence": [
+      "qwen-quickstart"
+    ],
+    "scope": "Do not generalize to all Qwen variants.",
+    "local_eval": "not_verified",
+    "reviewed": "2026-11-27"
+  }
+]
