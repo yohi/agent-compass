@@ -348,6 +348,14 @@ def main(argv=None):
     gen.add_argument("--framework")
     gen.add_argument("--language", choices=("ja", "en"), default="ja")
     gen.add_argument("--output-dir", type=Path, help="new directory for draft, configuration and evidence")
+    aud = sub.add_parser("audit", help="read-only lexical audit of an instruction file")
+    aud.add_argument("path", type=Path)
+    aud.add_argument("--harness", required=True)
+    aud.add_argument("--model")
+    aud.add_argument("--framework")
+    aud.add_argument("--language", choices=("ja", "en"), default="ja")
+    aud.add_argument("--format", choices=("markdown", "json"), default="markdown")
+    aud.add_argument("--output", type=Path, help="new report file; no overwrite")
     github = sub.add_parser("github-monitor")
     github.add_argument("--repo", required=True)
     args = parser.parse_args(argv)
@@ -357,6 +365,8 @@ def main(argv=None):
         indexes = load_indexes(targets)
         from generator import load_generation
         load_generation(targets, practices)
+        from auditor import load_rules
+        load_rules(practices)
         print(f"{len(sources)} sources, {len(targets)} targets, {len(practices)} practices; "
               f"{len(indexes)} discovery indexes")
     elif args.cmd == "render":
@@ -381,6 +391,21 @@ def main(argv=None):
         else:
             write_bundle(args.output_dir, documents)
             print(f"Draft bundle created: {args.output_dir}")
+    elif args.cmd == "audit":
+        import auditor
+        from generator import load_generation
+        generation = load_generation(targets, practices)
+        rules = auditor.load_rules(practices)
+        text, input_hash, input_bytes = auditor.read_input(args.path)
+        report = auditor.audit(text, input_hash, input_bytes, sources, targets, practices,
+                               generation, rules, args.harness, args.model, args.framework)
+        content = (json.dumps(report, ensure_ascii=False, indent=2) + "\n"
+                   if args.format == "json" else auditor.render(report, args.language))
+        if args.output is None:
+            print(content, end="")
+        else:
+            auditor.write_report(args.output, content)
+            print(f"Audit report created: {args.output}")
     elif args.cmd == "monitor":
         require(args.state.resolve() != args.output.resolve(), "state/output must differ")
         previous = read_json(args.state) if args.state.exists() else {}

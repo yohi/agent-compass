@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2 — 2026-11-27
+
+- Read-only lexical instruction auditor with line references, profile-scoped evidence and input/registry fingerprints.
+- Markdown and JSON reports, no raw input excerpts or compliance verdict; exclusive report creation.
+- Regression tests for scope isolation, safety boundaries and non-overwrite.
+
 ## 0.3.1 — 2026-11-27
 
 - Offline AGENTS.md draft generator with explicit practice placement and exact target selection.

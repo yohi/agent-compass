@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "advisory_line_count": 200,
+  "rules": [
+    {
+      "id": "AC-A01",
+      "kind": "duplicate",
+      "evidence": [
+        "BP-002",
+        "BP-006",
+        "BP-052"
+      ],
+      "description": "Repeated normalized instruction text; not semantic duplication."
+    },
+    {
+      "id": "AC-A02",
+      "kind": "runtime-setting",
+      "evidence": [
+        "BP-015",
+        "BP-016",
+        "BP-022",
+        "BP-024",
+        "BP-025",
+        "BP-027",
+        "BP-030",
+        "BP-032",
+        "BP-035",
+        "BP-037",
+        "BP-038",
+        "BP-039",
+        "BP-040",
+        "BP-041",
+        "BP-042",
+        "BP-043",
+        "BP-044",
+        "BP-046",
+        "BP-049"
+      ],
+      "description": "Explicit API parameter assignment or protocol mention; may be legitimate project documentation."
+    },
+    {
+      "id": "AC-A03",
+      "kind": "repeated-review",
+      "evidence": [
+        "BP-005",
+        "BP-023",
+        "BP-033",
+        "BP-034"
+      ],
+      "description": "Repeated review or zero-findings language; review necessity and project policy require context."
+    },
+    {
+      "id": "AC-A04",
+      "kind": "unconditional-reread",
+      "evidence": [
+        "BP-019"
+      ],
+      "description": "Unconditional repeated file-read requirement; consider only if model scope applies."
+    },
+    {
+      "id": "AC-A05",
+      "kind": "approval-checkpoint",
+      "evidence": [
+        "BP-020",
+        "BP-023",
+        "BP-028",
+        "BP-033"
+      ],
+      "description": "Potentially broad routine-step approval requirement; genuine authorization boundaries must remain."
+    },
+    {
+      "id": "AC-A06",
+      "kind": "size",
+      "evidence": [
+        "BP-003",
+        "BP-006",
+        "BP-018"
+      ],
+      "description": "Physical line count is a local triage threshold, not a vendor limit."
+    },
+    {
+      "id": "AC-A07",
+      "kind": "other-model",
+      "evidence": [],
+      "description": "Exact registered model identifier mentioned outside selected profile; inspect context; no incompatibility claim."
+    },
+    {
+      "id": "AC-A08",
+      "kind": "literal-coverage",
+      "evidence": [],
+      "description": "Literal comparison only; unmatched guidance is not missing or violated."
+    }
+  ]
+}
