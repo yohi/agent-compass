@@ -54,6 +54,8 @@ Owner; no automatic repeated LLM review. Only unmodified candidate drafts may be
 A previously prepared conservative-policy PR may resume without changing
 its commit, only if the complete tree, original candidate, policy receipt,
 advisory, source and unchanged registry base are reconstructed exactly.
+Resume existing preparations only on explicit Owner workflow_dispatch;
+scheduled/upstream runs skip them to avoid repeated CI/merge attempts.
 Assisted/owner-selected or modified preparations remain manual. A manual mode change stops newly
 started jobs, not a job already executing; cancel any active run to stop it.
 

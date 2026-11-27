@@ -491,10 +491,14 @@ def run(repo, master, env, event):
             identity = pr["head"]["ref"].removeprefix("compass-proposals/")
             changed = gh("--paginate", "--slurp", f"{endpoint}/pulls/{pr['number']}/files?per_page=100")
             if any(x["filename"] == f"adoptions/{identity}.json" for page in changed for x in page):
+                if event != "workflow_dispatch":
+                    print("AUTO_ADOPTION_PREPARED_OWNER_RESUME_REQUIRED", pr["number"], flush=True)
+                    continue
                 try:
                     _, expected_tree, receipt_path = verify_prepared(endpoint, master, pr, registries, p)
-                except (ValueError, KeyError, TypeError, IndexError, OSError):
-                    print("AUTO_ADOPTION_OWNER_REVIEW_REQUIRED", pr["number"], flush=True)
+                except (ValueError, KeyError, TypeError, IndexError, OSError) as exc:
+                    code = exc.args[0] if type(exc) is ValueError and len(exc.args) == 1 and isinstance(exc.args[0], str) and re.fullmatch(r"[a-z_]{1,80}", exc.args[0]) else advisory.diagnostic(exc)
+                    print("AUTO_ADOPTION_OWNER_REVIEW_REQUIRED", pr["number"], code, flush=True)
                     continue
                 print("AUTO_ADOPTION_RESUMED", pr["number"], pr["head"]["sha"], flush=True)
                 merge_and_publish(endpoint, master, (pr["number"], pr["head"]["sha"],

@@ -73,6 +73,63 @@ class AutoAdoptionTests(unittest.TestCase):
                           {"type": "file", "sha": "old"}, {"type": "file", "sha": "new"}]):
             self.assertFalse(a.same_registry(self.endpoint, self.head, self.master))
 
+    def test_resume_reconstructs_exact_tree_without_new_commit(self):
+        old, origin, head, current = "b"*40, "a"*40, "c"*40, "d"*40
+        identity = self.report["identity"]
+        pr = {"number": 4, "head": {"sha": head, "ref": "compass-proposals/" + identity}}
+        path = adoption.proposal_path(self.report)
+        receipt_path = f"adoptions/{identity}.json"
+        raw = adoption.encode(self.report)
+        advice = a.selected_advice([self.comment], self.report, origin)
+        registries = (self.s, self.t, self.p, self.g, self.audit)
+        files, receipt = adoption.plan(self.report, self.selected, *registries, self.content, "2026-11-27")
+        receipt = a.receipt_for(receipt, self.report, advice, raw, self.policy,
+                                4, origin, old, "conservative")
+        def entry(text):
+            return ("100644", "blob", a.blob_id(text))
+        base = {k: entry(v) for k, v in files.items() if k not in {"registry/practices.json",
+                                                                  "registry/generation.json",
+                                                                  "docs/BEST_PRACTICES.md"}}
+        base.update({"registry/practices.json": entry("old practices"),
+                     "registry/generation.json": entry("old generation"),
+                     "docs/BEST_PRACTICES.md": entry("old docs"),
+                     "auto_adoption.py": entry("old code")})
+        expected_delta = {k: entry(v) for k, v in {**files, path: raw,
+                            receipt_path: adoption.encode(receipt)}.items()}
+        prepared = {**base, **expected_delta}
+        current_tree = {**base, "auto_adoption.py": entry("new trusted code")}
+        trees = {old: base, origin: {**base, path: entry(raw)}, head: prepared, current: current_tree}
+        def fake_gh(url):
+            if url.endswith("/" + head):
+                return {"parents": [{"sha": origin}, {"sha": old}]}
+            if url.endswith("/" + origin):
+                return {"parents": [{"sha": old}]}
+            self.fail("unexpected GitHub operation")
+        with patch.object(a, "read_pr", return_value=pr), \
+                patch.object(a, "read_data", side_effect=[adoption.encode(receipt), raw]), \
+                patch.object(a, "gh", side_effect=fake_gh), \
+                patch.object(a, "same_registry", return_value=True), \
+                patch.object(a, "tree_files", side_effect=lambda endpoint, ref: trees[ref]), \
+                patch.object(a, "comments_for", return_value=[self.comment]), \
+                patch.object(compass, "fetch_document", return_value=(self.content, "text", "unused")), \
+                patch.object(compass, "normalize", return_value=self.content):
+            generated, merged_tree, actual_receipt_path = a.verify_prepared(
+                self.endpoint, current, pr, registries, self.policy)
+            self.assertEqual(generated, files)
+            self.assertEqual(actual_receipt_path, receipt_path)
+            self.assertEqual(merged_tree, {**current_tree, **expected_delta})
+        trees[head] = {**prepared, "evil.py": entry("unexpected code")}
+        with patch.object(a, "read_pr", return_value=pr), \
+                patch.object(a, "read_data", side_effect=[adoption.encode(receipt), raw]), \
+                patch.object(a, "gh", side_effect=fake_gh), \
+                patch.object(a, "same_registry", return_value=True), \
+                patch.object(a, "tree_files", side_effect=lambda endpoint, ref: trees[ref]), \
+                patch.object(a, "comments_for", return_value=[self.comment]), \
+                patch.object(compass, "fetch_document", return_value=(self.content, "text", "unused")), \
+                patch.object(compass, "normalize", return_value=self.content):
+            with self.assertRaisesRegex(ValueError, "prepared_tree_mismatch"):
+                a.verify_prepared(self.endpoint, current, pr, registries, self.policy)
+
     def test_read_pr_bounded_propagation(self):
         branch = "compass-proposals/" + "c"*64
         pr = {"state": "open", "draft": True, "user": {"login": a.BOT},
