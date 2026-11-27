@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.10.3 — 2026-11-27
+
+- Replace stale PR base SHA dependency with exact live Git refs and immutable conflict-free three-way merge tree verification. Preserve ordinary GitHub merge rules and post-merge parent/tree validation.
+
 ## 0.10.2 — 2026-11-27
 
 - Bound validation run metadata propagation waits, report mismatched field names safely, and reuse successful exact-head/exact-master bot validation with attempt-specific job verification. No change to adoption policy or merge rules.

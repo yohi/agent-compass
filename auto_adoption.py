@@ -484,6 +484,54 @@ def prepare(endpoint, master, candidate, registries, p, mode):
     return number, new["sha"], result["sha"], receipt_path
 
 
+def verify_merge_inputs(endpoint, master, head, branch, expected_tree):
+    """Verify a conflict-free three-way file tree using immutable Git objects.
+
+    PR base.sha and refs/pull/N/merge can describe an older base. Neither is
+    authority for the current master. Do not write or update either branch.
+    """
+    require(re.fullmatch(r"compass-proposals/[a-f0-9]{64}", branch), "prepared_branch")
+    require(adoption.current_ref(endpoint, "master") == master, "master_changed_before_merge")
+    require(adoption.current_ref(endpoint, branch) == head, "prepared_ref_changed_before_merge")
+    commit = gh(f"{endpoint}/git/commits/{head}")
+    parents = commit["parents"]
+    require(len(parents) == 2 and adoption.commit_sha(parents[1]["sha"]), "prepared_parents")
+    old = parents[1]["sha"]
+    comparison = gh(f"{endpoint}/compare/{master}...{head}")
+    require(comparison.get("merge_base_commit", {}).get("sha") == old, "unexpected_merge_base")
+    old_tree = tree_files(endpoint, old)
+    current_tree = old_tree if old == master else tree_files(endpoint, master)
+    prepared_tree = tree_files(endpoint, head)
+    # Only non-overlapping or identical file changes are allowed. Refuse
+    # even text-mergeable overlapping changes instead of guessing content.
+    projected = dict(current_tree)
+    for path in set(old_tree) | set(prepared_tree):
+        before, after = old_tree.get(path), prepared_tree.get(path)
+        if before == after:
+            continue
+        current = current_tree.get(path)
+        require(current == before or current == after, "overlapping_merge_change")
+        if after is None:
+            projected.pop(path, None)
+        else:
+            projected[path] = after
+    # Reject file/directory path collisions, including gitlinks.
+    for path in projected:
+        parts = path.split("/")
+        require(not any("/".join(parts[:i]) in projected for i in range(1, len(parts))),
+                "merge_path_collision")
+    if isinstance(expected_tree, dict):
+        require(projected == expected_tree, "projected_merge_tree_mismatch")
+    else:
+        require(old == master and commit["tree"]["sha"] == expected_tree
+                and projected == prepared_tree, "projected_merge_tree_mismatch")
+    # Exact live refs again after immutable-object checks, as close as
+    # possible to the ordinary GitHub merge call.
+    require(adoption.current_ref(endpoint, "master") == master, "master_changed_before_merge")
+    require(adoption.current_ref(endpoint, branch) == head, "prepared_ref_changed_before_merge")
+    print("AUTO_ADOPTION_MERGE_INPUTS_VERIFIED", master, head, flush=True)
+
+
 def merge_and_publish(endpoint, master, prepared, env, sleep=time.sleep):
     number, head, expected_tree, receipt_path = prepared
     require(adoption.current_ref(endpoint, "master") == master, "master_changed_before_merge")
@@ -509,8 +557,7 @@ def merge_and_publish(endpoint, master, prepared, env, sleep=time.sleep):
     if pr.get("mergeable") is not True or not acceptable:
         print("AUTO_ADOPTION_PENDING_GITHUB_CHECKS", number, flush=True)
         return "PENDING"
-    require(pr["base"]["sha"] == master and adoption.current_ref(endpoint, "master") == master,
-            "master_changed_before_merge")
+    verify_merge_inputs(endpoint, master, head, pr["head"]["ref"], expected_tree)
     # GitHub's REST merge SHA guards the HEAD, not an atomic expected-base SHA.
     # Check the resulting commit/tree before requesting deployment.
     merged = gh("--method", "PUT", f"{endpoint}/pulls/{number}/merge",

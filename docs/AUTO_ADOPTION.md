@@ -78,8 +78,13 @@ bot-triggered Validate registry action_required run may be nonblocking
 after the separate successful trusted validation; any other failing or
 pending checks/statuses, protected branch or actual merge-rule refusal
 remain blocking. This does not satisfy or override required PR checks.
-Check current master immediately before merge and verify merged commit
-parents/tree afterwards. GitHub merge API's expected SHA guards HEAD,
+Before merging, use exact live master and proposal branch Git refs,
+not the cached PR base.sha or GitHub's temporary merge ref. Compare the
+immutable merge base and reconstruct the conflict-free three-way file
+tree (no overlapping edits or path collisions); it must equal the
+previously verified expected tree. Recheck both live refs immediately
+before the ordinary merge API call. Verify merged commit parents/tree
+afterwards. GitHub merge API's expected SHA guards HEAD,
 not an atomic expected master SHA: concurrent base changes are a residual
 race, detected by post-merge verification. No automatic rollback.
 Use a protected master with appropriate required checks where practical.

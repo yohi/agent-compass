@@ -214,18 +214,75 @@ class AutoAdoptionTests(unittest.TestCase):
                 {"total_count": 1, "workflow_runs": [{**pending, "conclusion": "failure"}]}]):
             self.assertFalse(a.only_optional_bot_ci_pending(self.endpoint, self.head))
 
+    def test_merge_inputs_use_live_refs_and_immutable_trees(self):
+        old, master, head = "b"*40, "d"*40, "a"*40
+        branch = "compass-proposals/" + "e"*64
+        def entry(value):
+            return ("100644", "blob", a.blob_id(value))
+        base = {"registry/practices.json": entry("old"), "auto_adoption.py": entry("v1")}
+        current = {**base, "auto_adoption.py": entry("v2")}
+        prepared = {**base, "registry/practices.json": entry("new")}
+        expected = {**current, "registry/practices.json": entry("new")}
+        commit = {"parents": [{"sha": "c"*40}, {"sha": old}], "tree": {"sha": "tree"}}
+        comparison = {"merge_base_commit": {"sha": old}}
+        trees = {old: base, master: current, head: prepared}
+        with patch.object(adoption, "current_ref", side_effect=[master, head, master, head]), \
+                patch.object(a, "gh", side_effect=[commit, comparison]), \
+                patch.object(a, "tree_files", side_effect=lambda endpoint, ref: trees[ref]):
+            a.verify_merge_inputs(self.endpoint, master, head, branch, expected)
+        with patch.object(adoption, "current_ref", side_effect=[master, "f"*40]), \
+                patch.object(a, "gh") as gh:
+            with self.assertRaisesRegex(ValueError, "prepared_ref_changed_before_merge"):
+                a.verify_merge_inputs(self.endpoint, master, head, branch, expected)
+            gh.assert_not_called()
+        with patch.object(adoption, "current_ref", side_effect=[master, head, "f"*40]), \
+                patch.object(a, "gh", side_effect=[commit, comparison]), \
+                patch.object(a, "tree_files", side_effect=lambda endpoint, ref: trees[ref]):
+            with self.assertRaisesRegex(ValueError, "master_changed_before_merge"):
+                a.verify_merge_inputs(self.endpoint, master, head, branch, expected)
+        with patch.object(adoption, "current_ref", side_effect=[master, head]), \
+                patch.object(a, "gh", side_effect=[commit, {"merge_base_commit": {"sha": "f"*40}}]):
+            with self.assertRaisesRegex(ValueError, "unexpected_merge_base"):
+                a.verify_merge_inputs(self.endpoint, master, head, branch, expected)
+        with patch.object(adoption, "current_ref", side_effect=[master, head]), \
+                patch.object(a, "gh", side_effect=[commit, comparison]), \
+                patch.object(a, "tree_files", side_effect=lambda endpoint, ref: trees[ref]):
+            with self.assertRaisesRegex(ValueError, "projected_merge_tree_mismatch"):
+                a.verify_merge_inputs(self.endpoint, master, head, branch, current)
+        trees[master] = {**current, "registry/practices.json": entry("conflicting")}
+        with patch.object(adoption, "current_ref", side_effect=[master, head]), \
+                patch.object(a, "gh", side_effect=[commit, comparison]), \
+                patch.object(a, "tree_files", side_effect=lambda endpoint, ref: trees[ref]):
+            with self.assertRaisesRegex(ValueError, "overlapping_merge_change"):
+                a.verify_merge_inputs(self.endpoint, master, head, branch, expected)
+
+    def test_merge_inputs_fresh_preparation(self):
+        master, head = self.master, self.head
+        branch = "compass-proposals/" + "e"*64
+        base = {"file": ("100644", "blob", a.blob_id("old"))}
+        prepared = {"file": ("100644", "blob", a.blob_id("new"))}
+        commit = {"parents": [{"sha": "c"*40}, {"sha": master}], "tree": {"sha": "tree"}}
+        with patch.object(adoption, "current_ref", side_effect=[master, head, master, head]), \
+                patch.object(a, "gh", side_effect=[commit, {"merge_base_commit": {"sha": master}}]), \
+                patch.object(a, "tree_files", side_effect=[base, prepared]):
+            a.verify_merge_inputs(self.endpoint, master, head, branch, "tree")
+
     def test_merge_dispatch_only_verified_tree(self):
         head, master, merged = self.head, self.master, "c"*40
         prepared = (4, head, "tree", "receipt")
         ready = {"data": {"markPullRequestReadyForReview": {"pullRequest":
                          {"isDraft": False, "headRefOid": head}}}}
-        pr = {"node_id": "id", "draft": True, "mergeable": True, "mergeable_state": "clean", "base": {"sha": master}}
+        # Cached PR base SHA is stale, but immutable merge verification is authoritative.
+        pr = {"node_id": "id", "draft": True, "mergeable": True, "mergeable_state": "clean",
+              "base": {"sha": "f"*40}, "head": {"ref": "compass-proposals/" + "e"*64}}
         actual = {"tree": {"sha": "tree"}, "parents": [{"sha": master}, {"sha": head}]}
-        with patch.object(adoption, "current_ref", side_effect=[master, master, merged]), \
+        with patch.object(adoption, "current_ref", side_effect=[master, merged]), \
                 patch.object(a, "dispatch_validation"), \
+                patch.object(a, "verify_merge_inputs") as verify, \
                 patch.object(a, "read_pr", return_value=pr), \
                 patch.object(a, "gh", side_effect=[ready, {"merged": True, "sha": merged}, actual, None]) as gh:
             self.assertEqual(a.merge_and_publish(self.endpoint, master, prepared, {}), "MERGED")
+            verify.assert_called_once_with(self.endpoint, master, head, pr["head"]["ref"], "tree")
             self.assertEqual(gh.call_args_list[1].kwargs["payload"]["sha"], head)
             self.assertIn("/actions/workflows/pages.yml/dispatches", gh.call_args_list[-1].args[-1])
         with patch.object(adoption, "current_ref", return_value=master), \
@@ -237,6 +294,7 @@ class AutoAdoptionTests(unittest.TestCase):
         with patch.object(adoption, "current_ref", return_value=master), \
                 patch.object(a, "dispatch_validation"), \
                 patch.object(a, "read_pr", return_value=pr), \
+                patch.object(a, "verify_merge_inputs"), \
                 patch.object(a, "gh", side_effect=[ready, {"merged": True, "sha": merged},
                     {**actual, "tree": {"sha": "wrong"}}]) as gh:
             with self.assertRaisesRegex(ValueError, "merged_tree_or_base_changed"):
