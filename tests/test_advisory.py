@@ -192,6 +192,69 @@ class AdvisoryTests(unittest.TestCase):
         self.assertNotIn("private detail", log)
         self.assertNotIn("SECRET", log)
 
+    def test_retry_authorization_requires_owner_dispatch_and_single_pr(self):
+        env = {"ADVISORY_RETRY_FAILED": "true", "ADVISORY_PR": "4",
+               "REPOSITORY_OWNER": "yohi", "GITHUB_ACTOR": "yohi", "TRIGGERING_ACTOR": "yohi"}
+        self.assertTrue(a.retry_requested(env, "workflow_dispatch"))
+        self.assertFalse(a.retry_requested({}, "schedule"))
+        self.assertFalse(a.retry_requested({**env, "ADVISORY_RETRY_FAILED": "false"}, "schedule"))
+        for overrides, event in (({}, "schedule"), ({"ADVISORY_PR": ""}, "workflow_dispatch"),
+                                 ({"ADVISORY_PR": "4,5"}, "workflow_dispatch"),
+                                 ({"GITHUB_ACTOR": "other"}, "workflow_dispatch"),
+                                 ({"TRIGGERING_ACTOR": "other"}, "workflow_dispatch"),
+                                 ({"REPOSITORY_OWNER": "other"}, "workflow_dispatch"),
+                                 ({"ADVISORY_RETRY_FAILED": "yes"}, "workflow_dispatch")):
+            with self.subTest(overrides=overrides, event=event), patch.object(compass, "gh") as gh:
+                with self.assertRaises(ValueError):
+                    a.run(a.REPO, self.master, {**env, **overrides}, event)
+                gh.assert_not_called()
+
+    def test_same_day_retry_preserves_reservations_and_checks_result(self):
+        pr = {"number": 4, "head": {"sha": self.head}}
+        rows = self.c["providers"][:1]
+        env = {"NVIDIA_API_KEY": "fake"}
+        def execute(retry, comments, daily=1, monthly=1, blocked=()):
+            self.ledger.state = a.empty_state(self.day())
+            self.ledger.state.update(attempted=[self.head], daily=daily, monthly=monthly,
+                                     blocked=list(blocked))
+            saved = []
+            self.ledger.save = lambda: saved.append(copy.deepcopy(self.ledger.state))
+            with patch.object(a, "utc_day", self.day), \
+                    patch.object(a, "already_commented", side_effect=comments) as lookup, \
+                    patch.object(adoption, "get_pr", return_value=pr), \
+                    patch.object(adoption, "get_candidate", return_value=(self.report, "p", "raw")), \
+                    patch.object(a, "prepare", return_value=(self.content, "fixture")), \
+                    patch.object(adoption, "current_ref", return_value=self.master), \
+                    patch.object(a, "call_model", return_value=self.answer) as call, \
+                    patch.object(compass, "gh") as gh:
+                result = a.review_one("repos/"+a.REPO, pr, self.master, self.ledger,
+                                      self.c, rows, env, self.registries, retry_failed=retry)
+                return result, call.call_count, lookup.call_count, gh.call_count, saved
+        self.assertEqual(execute(False, []), ("SKIPPED", 0, 0, 0, []))
+        self.assertEqual(execute(True, [True]), ("SKIPPED", 0, 1, 0, []))
+        self.assertEqual(execute(True, [False, True]), ("SKIPPED", 0, 2, 0, []))
+        result, calls, lookups, writes, saved = execute(True, [False, False, False])
+        self.assertEqual((result, calls, lookups, writes), ("ADOPT", 1, 3, 1))
+        self.assertEqual(len(saved), 1)
+        self.assertEqual((saved[0]["daily"], saved[0]["monthly"]), (2, 2))
+        self.assertEqual(saved[0]["attempted"], [self.head])
+        for daily, monthly, blocked in ((10, 10, ()), (1, 300, ()), (1, 1, ("nvidia",))):
+            self.assertEqual(execute(True, [False, False], daily, monthly, blocked),
+                             ("DEFER", 0, 2, 0, []))
+
+    def test_retry_comment_lookup_failure_prevents_inference(self):
+        pr = {"number": 4, "head": {"sha": self.head}}
+        self.ledger.state.update(attempted=[self.head], daily=1, monthly=1)
+        with patch.object(a, "utc_day", self.day), \
+                patch.object(a, "already_commented", side_effect=ValueError("invalid lookup")), \
+                patch.object(a, "call_model") as call, patch.object(a, "reserve") as reserve:
+            with self.assertRaises(ValueError):
+                a.review_one("repos/"+a.REPO, pr, self.master, self.ledger, self.c,
+                             self.c["providers"][:1], {"NVIDIA_API_KEY": "fake"},
+                             self.registries, retry_failed=True)
+            call.assert_not_called()
+            reserve.assert_not_called()
+
     def test_disabled_no_io(self):
         with patch.object(compass, "gh") as gh:
             self.assertEqual(a.run(a.REPO, self.master, {}, "schedule"), 0)

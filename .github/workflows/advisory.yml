@@ -8,6 +8,11 @@ on:
         description: "Optional candidate PR number; blank scans open draft proposals"
         required: false
         type: string
+      retry_failed:
+        description: "Owner recovery of an unpublished same-day attempt (requires proposal_pr; preserves quota)"
+        required: false
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -36,6 +41,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ADVISORY_ENABLED: ${{ vars.ADVISORY_ENABLED }}
           ADVISORY_PR: ${{ inputs.proposal_pr }}
+          ADVISORY_RETRY_FAILED: ${{ inputs.retry_failed }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           NVIDIA_FREE_TIER_CONFIRMED: ${{ vars.NVIDIA_FREE_TIER_CONFIRMED }}
           NVIDIA_PROTOTYPE_USE_CONFIRMED: ${{ vars.NVIDIA_PROTOTYPE_USE_CONFIRMED }}

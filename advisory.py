@@ -90,6 +90,7 @@ SAFE_REASONS = frozenset({
     "candidate_path", "candidate_blob", "candidate_size", "candidate_branch",
     "candidate_parent", "candidate_commit_scope", "repository_or_event",
     "pr_number", "candidate_pr_not_found", "proposal_shape", "proposal_identity",
+    "retry_flag", "retry_owner_required", "retry_pr_required",
 })
 
 
@@ -473,17 +474,35 @@ def post_result(endpoint, number, head, master, report, result, row):
     return result["verdict"]
 
 
-def review_one(endpoint, pr, master, ledger, c, providers, env, registries):
+def retry_requested(env, event):
+    """Explicit Owner-only, single-PR recovery of an unpublished attempt."""
+    flag = env.get("ADVISORY_RETRY_FAILED", "")
+    require(flag in {"", "false", "true"}, "retry_flag")
+    if flag != "true":
+        return False
+    require(event == "workflow_dispatch"
+            and env.get("REPOSITORY_OWNER") == env.get("GITHUB_ACTOR")
+            == env.get("TRIGGERING_ACTOR") == "yohi", "retry_owner_required")
+    require(bool(re.fullmatch(r"[1-9][0-9]{0,9}", env.get("ADVISORY_PR", "").strip())),
+            "retry_pr_required")
+    return True
+
+
+def review_one(endpoint, pr, master, ledger, c, providers, env, registries, retry_failed=False):
     head, number = pr["head"]["sha"], pr["number"]
     require(adoption.commit_sha(head), "pr_head")
     roll(ledger.state, utc_day())
-    if head in ledger.state["attempted"]:
+    attempted_today = head in ledger.state["attempted"]
+    if attempted_today and not retry_failed:
         print(f"PR #{number}: SKIPPED (already_reserved_today)", flush=True)
         return "SKIPPED"
     with stage("candidate_comment_lookup", number):
         if already_commented(endpoint, number, head):
             print(f"PR #{number}: SKIPPED (existing_advisory)", flush=True)
             return "SKIPPED"
+    if attempted_today:
+        # A reservation alone does not prove failed inference. Retain usage.
+        print(f"PR #{number}: OWNER_RETRY_UNPUBLISHED (prior reservation retained)", flush=True)
     # Only the exact untouched, bot-generated candidate-only PR; never check out PR code.
     with stage("candidate_pr_head_check", number):
         current = adoption.get_pr(endpoint, number, head)
@@ -503,6 +522,15 @@ def review_one(endpoint, pr, master, ledger, c, providers, env, registries):
             if not is_free:
                 print(f"PR #{number} openrouter free_catalog_unconfirmed", flush=True)
                 continue
+        if attempted_today and retry_failed:
+            with stage("retry_master_check", number, row):
+                require(adoption.current_ref(endpoint, "master") == master, "master_changed")
+            with stage("retry_pr_head_check", number, row):
+                adoption.get_pr(endpoint, number, head)
+            with stage("retry_comment_lookup", number, row):
+                if already_commented(endpoint, number, head):
+                    print(f"PR #{number}: SKIPPED (existing_advisory)", flush=True)
+                    return "SKIPPED"
         with stage("request_reservation", number, row):
             reserved = reserve(ledger, head, name, c, utc_day)
         if not reserved:
@@ -540,6 +568,7 @@ def review_one(endpoint, pr, master, ledger, c, providers, env, registries):
 def run(repo, master, env, event):
     require(repo == REPO and adoption.commit_sha(master) and event in {"schedule", "workflow_dispatch"},
             "repository_or_event")
+    retry_failed = retry_requested(env, event)
     if env.get("ADVISORY_ENABLED") != "true":
         print("ADVISORY_DISABLED")
         return 0
@@ -571,7 +600,8 @@ def run(repo, master, env, event):
             break
         require(adoption.current_ref(endpoint, "master") == master, "master_changed")
         try:
-            result = review_one(endpoint, pr, master, ledger, c, providers, env, registries)
+            result = review_one(endpoint, pr, master, ledger, c, providers, env, registries,
+                                retry_failed=retry_failed)
         except (ValueError, KeyError, TypeError, IndexError, URLError, OSError) as exc:
             print(f"PR #{pr['number']}: DEFER (candidate/evidence check unavailable) code={diagnostic(exc)}",
                   flush=True)

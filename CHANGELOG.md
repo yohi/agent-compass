@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.2 — 2026-11-27
+
+- Owner-dispatched single-PR recovery of unpublished same-day attempts, preserving previous reservations, quota and provider blocks. Existing advisory comments remain terminal; no automatic re-review or ledger reset.
+
 ## 0.9.1 — 2026-11-27
 
 - Advisory stage diagnostics with allowlisted provider/model, safe fixed reason codes and GitHub HTTP status extraction. No raw errors or model payloads; preserve provider policy, quotas and existing ledger.
