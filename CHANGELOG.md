@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.3 — 2026-11-27
+
+- Grant pull-requests write permission only to the advisory job to address the observed HTTP 403 on PR comment publication. Preserve contents read-only access, owner gates, quotas, and advisory-only behavior.
+
 ## 0.9.2 — 2026-11-27
 
 - Owner-dispatched single-PR recovery of unpublished same-day attempts, preserving previous reservations, quota and provider blocks. Existing advisory comments remain terminal; no automatic re-review or ledger reset.
