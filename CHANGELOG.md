@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.1 — 2026-11-27
+
+- Safe response/validation diagnostics with source and chunk context; constrain proposal category enum.
+- One bounded HTTP 503 retry with a fresh durable quota reservation, preserving existing ledger and fail-closed validation.
+
 ## 0.6.0 — 2026-11-27
 
 - Opt-in free-tier Gemini maintenance with persistent attempt caps, pending snapshots and validated unadopted proposal PRs.

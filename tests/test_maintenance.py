@@ -3,6 +3,7 @@ import hashlib
 import json
 import unittest
 from unittest.mock import patch
+from urllib.error import HTTPError
 
 import compass
 import maintenance as m
@@ -104,6 +105,97 @@ class MaintenanceTests(unittest.TestCase):
         self.assertEqual(m.parse_response(raw), {"proposals": []})
         with self.assertRaises(ValueError):
             m.parse_response(raw.replace("STOP", "MAX_TOKENS"))
+
+    def test_safe_response_diagnostics(self):
+        def response(finish="STOP", parts=None):
+            return json.dumps({"candidates": [{"finishReason": finish, "content": {"parts":
+                               [{"text": "{}"}] if parts is None else parts}}]})
+        cases = [
+            ("not JSON PRIVATE", "response_envelope_json"),
+            ("[]", "response_envelope_shape"),
+            ("{}", "response_candidate_count"),
+            (response("MAX_TOKENS"), "finish_max_tokens"),
+            (response("PRIVATE_REASON"), "response_finish_unknown"),
+            (response(parts=[{"thought": True, "text": "PRIVATE"}]), "response_empty_text"),
+            (response(parts=[{"functionCall": {"name": "PRIVATE"}}]), "response_part_shape"),
+            (response(parts=[{"text": "PRIVATE_INVALID_JSON"}]), "response_json"),
+        ]
+        for raw, code in cases:
+            with self.subTest(code=code), self.assertRaises(m.DiagnosticError) as error:
+                m.parse_response(raw)
+            self.assertEqual(m.diagnostic(error.exception), code)
+            self.assertNotIn("PRIVATE", str(error.exception))
+        self.assertEqual(m.diagnostic(ValueError("PRIVATE")), "validation_failed")
+        self.assertEqual(m.diagnostic(KeyError("PRIVATE")), "unexpected_structure")
+
+    def test_proposal_diagnostic_and_schema(self):
+        text = "A source sentence provides project setup guidance."
+        row = m.observe(m.empty_state(), self.source, text, "2026-11-27")
+        p = {"action": "amend", "practice_id": "BP-001", "target": "common",
+             "category": "persistent-instructions", "status": "recommended", "en": "Use setup guidance.",
+             "ja": "設定を記載する。", "scope": "Project instructions only.", "reason": "Clarify scope.",
+             "evidence_quote": "fabricated PRIVATE quotation"}
+        for updates, code in [({}, "evidence_quote_not_found"),
+                              ({"category": "PRIVATE"}, "proposal_category_or_status"),
+                              ({"practice_id": "PRIVATE"}, "proposal_link_or_duplicate"),
+                              ({"evidence_quote": "short"}, "evidence_quote_length"),
+                              ({"category": []}, "proposal_fields")]:
+            with self.assertRaises(m.DiagnosticError) as error:
+                m.validate_proposals({"proposals": [{**p, **updates}]}, self.source, row,
+                                     self.practices, text, self.c, "gemini-3.8-flash", False)
+            self.assertEqual(m.diagnostic(error.exception), code)
+        self.assertEqual(set(m.ITEM_SCHEMA["properties"]["category"]["enum"]), m.CATEGORIES)
+
+    def test_503_retry_is_reserved_and_bounded(self):
+        error = HTTPError("https://example.invalid", 503, "PRIVATE", {}, None)
+        args = ("gemini-3.8-flash", "fake", "prompt", m.ANALYSIS_SCHEMA, self.c)
+        s = m.empty_state()
+        c = copy.deepcopy(self.c)
+        c["models"]["analyze"]["daily_limit"] = 2
+        saved = []
+        save = lambda: saved.append(copy.deepcopy(s))
+        with patch.object(m, "pacific_day", return_value="2026-11-27"), \
+                patch.object(m, "call_model", side_effect=[error, {"proposals": []}]) as call:
+            model = m.reserve(s, "analyze", c, save, now=lambda: 1000)
+            self.assertEqual(model, args[0])
+            waits = []
+            result = m.call_with_retry(*args,
+                        lambda: m.reserve(s, "analyze", c, save, now=lambda: 1031),
+                        "agents-md", "analyze", sleep=waits.append)
+            self.assertEqual(result, {"proposals": []})
+            self.assertEqual(call.call_count, 2)
+            self.assertEqual(waits, [30])
+            self.assertEqual([r["usage"][model] for r in saved], [1, 2])
+        with patch.object(m, "pacific_day", return_value="2026-11-27"), \
+                patch.object(m, "call_model", side_effect=error) as call:
+            with self.assertRaises(HTTPError):
+                m.call_with_retry(*args,
+                        lambda: m.reserve(s, "analyze", c, save, now=lambda: 1062),
+                        "agents-md", "analyze", sleep=lambda _: None)
+            self.assertEqual(call.call_count, 1)  # exhausted quota
+        with patch.object(m, "pacific_day", return_value="2026-11-27"), \
+                patch.object(m, "call_model", side_effect=error) as call:
+            with self.assertRaises(HTTPError):
+                m.call_with_retry(*args, lambda: args[0], "agents-md", "analyze", sleep=lambda _: None)
+            self.assertEqual(call.call_count, 2)  # no third attempt
+
+    def test_retry_excludes_auth_quota_and_validation(self):
+        args = ("gemini-3.8-flash", "fake", "prompt", m.ANALYSIS_SCHEMA, self.c)
+        failures = [HTTPError("https://example.invalid", status, "PRIVATE", {}, None)
+                    for status in (400, 401, 403, 404, 429, 500)]
+        failures.append(m.DiagnosticError("response_json"))
+        for exc in failures:
+            with patch.object(m, "call_model", side_effect=exc) as call:
+                with self.assertRaises(type(exc)):
+                    m.call_with_retry(*args, lambda: self.fail("unexpected reservation"),
+                                      "agents-md", "analyze", sleep=lambda _: self.fail("unexpected wait"))
+                self.assertEqual(call.call_count, 1)
+        with patch.object(m, "pacific_day", side_effect=["2026-11-26", "2026-11-27"]), \
+                patch.object(m, "call_model", side_effect=HTTPError("https://example.invalid", 503, "", {}, None)) as call:
+            with self.assertRaises(HTTPError):
+                m.call_with_retry(*args, lambda: self.fail("unexpected reservation across midnight"),
+                                  "agents-md", "analyze", sleep=lambda _: None)
+            self.assertEqual(call.call_count, 1)
 
     def test_missing_enablement_no_writes(self):
         with patch.object(m, "Ledger") as ledger, patch.object(m, "call_model") as api:

@@ -32,9 +32,73 @@ SHA = re.compile(r"[a-f0-9]{64}\Z")
 COMMIT = re.compile(r"[a-f0-9]{40}\Z")
 
 
+# Only fixed diagnostics may reach the public Actions log.
+DIAGNOSTIC_CODES = {
+    "invalid classification": "classification_schema",
+    "invalid proposal string": "proposal_string",
+    "proposal shape": "proposal_shape",
+    "proposal fields": "proposal_fields",
+    "proposal action": "proposal_action",
+    "proposal category/status": "proposal_category_or_status",
+    "invalid addition": "proposal_add_scope",
+    "unlinked or duplicate practice": "proposal_link_or_duplicate",
+    "invalid retirement": "proposal_retirement_status",
+    "evidence quote length": "evidence_quote_length",
+    "unmatched evidence": "evidence_quote_not_found",
+    "API config": "api_config",
+    "input byte bound": "request_size",
+    "response size bound": "response_size",
+    "linked context too large": "linked_context_size",
+    "source cursor outside content": "source_cursor",
+    "empty source chunk": "source_chunk_empty",
+    "redirect refused": "redirect_refused",
+}
+FINISH_CODES = {
+    "MAX_TOKENS": "finish_max_tokens",
+    "SAFETY": "finish_safety",
+    "RECITATION": "finish_recitation",
+    "BLOCKLIST": "finish_blocklist",
+    "PROHIBITED_CONTENT": "finish_prohibited_content",
+    "SPII": "finish_spii",
+    "MALFORMED_FUNCTION_CALL": "finish_malformed_function_call",
+    "OTHER": "finish_other",
+}
+SAFE_CODES = set(DIAGNOSTIC_CODES.values()) | set(FINISH_CODES.values()) | {
+    "validation_failed", "response_envelope_json", "response_envelope_shape",
+    "response_candidate_count", "response_finish_unknown", "response_content_shape",
+    "response_part_shape", "response_empty_text", "response_json", "response_text_size",
+}
+
+
+class DiagnosticError(ValueError):
+    def __init__(self, code):
+        self.code = code if code in SAFE_CODES else "validation_failed"
+        super().__init__(self.code)
+
+
 def require(ok, message):
     if not ok:
-        raise ValueError(message)
+        raise DiagnosticError(DIAGNOSTIC_CODES.get(message, "validation_failed"))
+
+
+def diagnostic(exc):
+    if isinstance(exc, DiagnosticError):
+        return exc.code if exc.code in SAFE_CODES else "validation_failed"
+    if isinstance(exc, HTTPError):
+        return "http_" + str(exc.code) if type(exc.code) is int and 100 <= exc.code <= 599 else "http_error"
+    if isinstance(exc, TimeoutError):
+        return "timeout"
+    if isinstance(exc, UnicodeError):
+        return "decode_error"
+    if isinstance(exc, json.JSONDecodeError):
+        return "json_decode_error"
+    if isinstance(exc, (KeyError, TypeError, IndexError, AttributeError)):
+        return "unexpected_structure"
+    if isinstance(exc, OSError):
+        return "network_or_io_error"
+    if isinstance(exc, subprocess.SubprocessError):
+        return "github_operation_failed"
+    return "validation_failed"
 
 
 def config():
@@ -166,7 +230,7 @@ def reserve(state, role, c, save, now=time.time, sleep=time.sleep):
 
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
-        raise ValueError("redirect refused")
+        raise DiagnosticError("redirect_refused")
 
 
 def object_schema(properties):
@@ -177,22 +241,54 @@ STR = {"type": "string"}
 CLASS_SCHEMA = object_schema({"decision": {"type": "string", "enum": ["no_action", "analyze", "complex"]},
                               "reason": STR})
 ITEM_SCHEMA = object_schema({"action": {"type": "string", "enum": ["add", "amend", "deprecate", "supersede"]},
-                             "practice_id": STR, "target": STR, "category": STR,
+                             "practice_id": STR, "target": STR,
+                             "category": {"type": "string", "enum": sorted(CATEGORIES)},
                              "status": {"type": "string", "enum": sorted(compass.STATUSES)},
                              "en": STR, "ja": STR, "scope": STR, "reason": STR, "evidence_quote": STR})
 ANALYSIS_SCHEMA = object_schema({"proposals": {"type": "array", "items": ITEM_SCHEMA}})
 
 
 def parse_response(raw):
-    data = json.loads(raw)
+    try:
+        data = json.loads(raw)
+    except (ValueError, UnicodeError):
+        raise DiagnosticError("response_envelope_json") from None
+    if not isinstance(data, dict):
+        raise DiagnosticError("response_envelope_shape")
     candidates = data.get("candidates", [])
-    require(len(candidates) == 1 and candidates[0].get("finishReason") == "STOP", "incomplete response")
-    parts = candidates[0]["content"]["parts"]
-    require(all(p.get("thought") or (set(p) <= {"text", "thought", "thoughtSignature"} and isinstance(p.get("text"), str))
-                for p in parts), "unexpected model response part")
-    text = "".join(p["text"] for p in parts if not p.get("thought"))
-    require(len(text.encode("utf-8")) <= 65536, "response too large")
-    return json.loads(text)
+    if not isinstance(candidates, list) or len(candidates) != 1:
+        raise DiagnosticError("response_candidate_count")
+    candidate = candidates[0]
+    if not isinstance(candidate, dict):
+        raise DiagnosticError("response_envelope_shape")
+    finish = candidate.get("finishReason")
+    if finish != "STOP":
+        raise DiagnosticError(FINISH_CODES.get(finish, "response_finish_unknown")
+                              if isinstance(finish, str) else "response_finish_unknown")
+    content = candidate.get("content")
+    if not isinstance(content, dict) or not isinstance(content.get("parts"), list):
+        raise DiagnosticError("response_content_shape")
+    texts = []
+    for part in content["parts"]:
+        if not isinstance(part, dict):
+            raise DiagnosticError("response_part_shape")
+        # Never inspect or log hidden reasoning. Preserve strict non-thought text-only output.
+        if part.get("thought") is True:
+            continue
+        if (set(part) - {"text", "thought", "thoughtSignature"}
+                or not isinstance(part.get("text"), str)
+                or part.get("thought", False) is not False):
+            raise DiagnosticError("response_part_shape")
+        texts.append(part["text"])
+    text = "".join(texts)
+    if not text.strip():
+        raise DiagnosticError("response_empty_text")
+    if len(text.encode("utf-8")) > 65536:
+        raise DiagnosticError("response_text_size")
+    try:
+        return json.loads(text)
+    except (ValueError, UnicodeError):
+        raise DiagnosticError("response_json") from None
 
 
 def call_model(model, key, prompt, schema, c):
@@ -215,6 +311,27 @@ def call_model(model, key, prompt, schema, c):
     return parse_response(raw)
 
 
+def call_with_retry(model, key, prompt, schema, c, reserve_retry, sid, role, sleep=time.sleep):
+    """At most one retry after HTTP 503; reserve durably before every API attempt."""
+    try:
+        return call_model(model, key, prompt, schema, c)
+    except HTTPError as exc:
+        if exc.code != 503:
+            raise
+        print(f"Model transient failure: source={sid} role={role} model={model} code=http_503; "
+              "one retry eligible after 30s", flush=True)
+        day = pacific_day()
+        sleep(30)
+        if pacific_day() != day:
+            raise
+        retry_model = reserve_retry()
+        if retry_model is None:
+            raise
+        require(retry_model == model, "retry model changed")
+        print(f"Model retry: source={sid} role={role} model={model} attempt=2", flush=True)
+        return call_model(model, key, prompt, schema, c)
+
+
 def short_string(value, limit):
     require(isinstance(value, str) and 0 < len(value.strip()) <= limit and len(value) <= limit
             and "\x00" not in value and all(ord(ch) >= 32 or ch in "\n\t" for ch in value),
@@ -225,6 +342,7 @@ def short_string(value, limit):
 
 def classify(value):
     require(isinstance(value, dict) and set(value) == {"decision", "reason"}
+            and isinstance(value["decision"], str)
             and value["decision"] in {"no_action", "analyze", "complex"}, "invalid classification")
     short_string(value["reason"], 1000)
     return value["decision"]
@@ -246,7 +364,9 @@ def make_prompt(source, content, row, practices, c, classification):
                    "choose complex for uncertain/complex changes." if classification else
                    "Propose at most three concrete scoped registry edits, or an empty array if none warranted. "
                    "Use only the source's existing target or the target of a linked practice. "
-                   "For add use an empty practice_id and status candidate; otherwise use an exact linked practice ID. "
+                   "For add use an empty practice_id, source target, and status candidate; otherwise use an exact linked practice ID and its target. "
+                   "Use status deprecated for deprecate, superseded for supersede. "
+                   "Category must be one of: " + ", ".join(sorted(CATEGORIES)) + ". "
                    "For each proposal give bilingual wording, category, status, scope and reason, and a short exact "
                    "contiguous evidence_quote (8-150 characters, at most 20 words) from supplied source text. "
                    "Do not claim a deletion from absence or a prior-version change: previous text is unavailable. "
@@ -281,6 +401,7 @@ def validate_proposals(value, source, row, practices, excerpt, c, model, truncat
     for p in value["proposals"]:
         require(isinstance(p, dict) and set(p) == set(ITEM_SCHEMA["properties"]), "proposal fields")
         action, pid = p["action"], p["practice_id"]
+        require(all(isinstance(p[k], str) for k in ITEM_SCHEMA["properties"]), "proposal fields")
         require(action in {"add", "amend", "deprecate", "supersede"}, "proposal action")
         require(p["category"] in CATEGORIES and p["status"] in compass.STATUSES, "proposal category/status")
         if action == "add":
@@ -295,7 +416,8 @@ def validate_proposals(value, source, row, practices, excerpt, c, model, truncat
             require((action != "deprecate" or p["status"] == "deprecated") and
                     (action != "supersede" or p["status"] == "superseded"), "invalid retirement")
         quote = short_string(p["evidence_quote"], 150)
-        require(len(quote) >= 8 and len(quote.split()) <= 20 and quote in excerpt, "unmatched evidence")
+        require(len(quote) >= 8 and len(quote.split()) <= 20, "evidence quote length")
+        require(quote in excerpt, "unmatched evidence")
         start = excerpt.index(quote)
         # Never persist source quote, raw source or API response. Hash + normalized line locator.
         changes = {k: short_string(p[k], n) for k, n in (("en", 1200), ("ja", 1200),
@@ -469,7 +591,9 @@ def run(repo, commit, key, enabled):
                 blocked.add(role)
                 break
             try:
-                result = call_model(model, key, prompt, CLASS_SCHEMA if role == "classify" else ANALYSIS_SCHEMA, c)
+                result = call_with_retry(model, key, prompt,
+                                         CLASS_SCHEMA if role == "classify" else ANALYSIS_SCHEMA, c,
+                                         lambda: reserve(state, role, c, ledger.save), sid, role)
                 if role == "classify":
                     decision = classify(result)
                     if decision == "no_action":
@@ -481,7 +605,8 @@ def run(repo, commit, key, enabled):
                     continue
                 report = validate_proposals(result, source, row, practices, excerpt, c, model, truncated)
             except HTTPError as exc:
-                print(f"Model attempt failed: {role} http_{exc.code}")
+                print(f"Model attempt failed: source={sid} role={role} model={model} "
+                      f"cursor={row.get('cursor', 0)} code={diagnostic(exc)}", flush=True)
                 failure = True
                 blocked.add(role)
                 if exc.code in {401, 403, 429}:
@@ -491,14 +616,15 @@ def run(repo, commit, key, enabled):
                     ledger.save()
                     if block == "all":
                         return 1
-                # No retry or fallback on quota/auth errors. Alternate only on explicit model
-                # unavailable/service error; independent cap and a later run.
+                # No retry or fallback on quota/auth errors. Alternate only after explicit
+                # model unavailability or unrecovered service error; independent cap and a later run.
                 if role == "analyze" and exc.code in {404, 503}:
                     row["stage"] = "alternate"
                     ledger.save()
                 break
-            except (OSError, ValueError, KeyError, TypeError) as exc:
-                print(f"Model attempt failed: {role} {type(exc).__name__}")
+            except (OSError, ValueError, KeyError, TypeError, IndexError, AttributeError) as exc:
+                print(f"Model attempt failed: source={sid} role={role} model={model} "
+                      f"cursor={row.get('cursor', 0)} code={diagnostic(exc)}", flush=True)
                 failure = True
                 break
             if report["proposals"]:
@@ -533,5 +659,5 @@ if __name__ == "__main__":
         sys.exit(main())
     except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as exc:
         # Exception messages can contain provider responses or secrets; log only class.
-        print("Maintenance stopped: " + type(exc).__name__, file=sys.stderr)
+        print("Maintenance stopped: code=" + diagnostic(exc), file=sys.stderr)
         sys.exit(2)

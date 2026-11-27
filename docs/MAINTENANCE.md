@@ -43,8 +43,11 @@ Roles and per-Pacific-day reserved attempts:
 - gemini-3.6-flash: 5 (alternate only for primary HTTP 404/503, not quota)
 
 The ledger persists reservation before each request, including failure and
-interruption. At least 15 seconds between requests, serialized; no immediate
-retries. Quota failures persistently block the model until the next Pacific day;
+interruption. At least 15 seconds between requests, serialized. HTTP 503
+permits exactly one retry after 30 seconds, only if the same Pacific day and
+a new durable reservation is available. A second 503 stops the role for that
+run. No retry for authentication, quota, validation or other errors. Quota
+failures persistently block the model until the next Pacific day;
 authentication failures block all model calls for the same period.
 The code only allows these explicitly listed model IDs and caps, no paid
 fallback, grounding, tools, external callbacks or alternate providers.
@@ -57,6 +60,12 @@ practice, status, bounded text, evidence quote matching and identity.
 An excerpt hash, chunk cursor and within-chunk line/character locator replace the source quote in
 the archive. This checks literal evidence presence, not semantic entailment.
 No source body, prompt, key or raw response is persisted or logged.
+Diagnostics identify the registered source, role, model and chunk cursor,
+with fixed reason codes for response envelope/finish/JSON, proposal structure,
+scope, status and literal evidence checks. Unknown provider finish values and
+exception messages are never printed. Category values are constrained by the
+response schema as well as local validation. Existing failed attempts remain
+subject to the original daily retry guard; do not reset the ledger.
 
 ## Proposal and adoption
 
