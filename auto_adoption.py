@@ -1,5 +1,6 @@
 """Policy-bounded, owner-opt-in adoption of public, candidate-only PRs."""
 import base64
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -173,14 +174,213 @@ def check_candidate(endpoint, pr, master, registries, p):
     return current, report, path, raw, advice, content
 
 
-def read_pr(endpoint, number, head, draft=None):
-    pr = gh(f"{endpoint}/pulls/{number}")
-    require(pr["state"] == "open" and pr["head"]["sha"] == head
-            and pr["head"]["repo"]["full_name"] == REPO
-            and pr["base"]["repo"]["full_name"] == REPO
-            and pr["base"]["ref"] == "master" and pr["user"]["login"] == BOT
-            and (draft is None or pr["draft"] is draft), "prepared_pr_changed")
-    return pr
+def read_pr(endpoint, number, head, draft=None, sleep=time.sleep):
+    for attempt in range(6):
+        pr = gh(f"{endpoint}/pulls/{number}")
+        require(pr["state"] == "open"
+                and pr["head"]["repo"]["full_name"] == REPO
+                and pr["base"]["repo"]["full_name"] == REPO
+                and pr["base"]["ref"] == "master" and pr["user"]["login"] == BOT
+                and re.fullmatch(r"compass-proposals/[a-f0-9]{64}", pr["head"]["ref"]),
+                "prepared_pr_scope_changed")
+        if pr["head"]["sha"] == head and (draft is None or pr["draft"] is draft):
+            return pr
+        # Only tolerate API propagation lag when the branch ref is already exact.
+        require(adoption.current_ref(endpoint, pr["head"]["ref"]) == head, "prepared_ref_changed")
+        if attempt < 5:
+            sleep(2)
+    raise ValueError("prepared_pr_state_timeout")
+
+
+def blob_id(text):
+    raw = text.encode("utf-8")
+    return hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
+
+
+def read_data(endpoint, path, ref, limit=4000000):
+    entry = gh(f"{endpoint}/contents/{path}?ref={ref}")
+    require(entry["type"] == "file" and entry["encoding"] == "base64"
+            and type(entry["size"]) is int and 0 < entry["size"] <= limit, "prepared_data_shape")
+    raw = base64.b64decode("".join(entry["content"].split()), validate=True)
+    require(len(raw) == entry["size"], "prepared_data_size")
+    text = raw.decode("utf-8")
+    require(blob_id(text) == entry["sha"], "prepared_blob_identity")
+    return text
+
+
+def tree_files(endpoint, commit):
+    obj = gh(f"{endpoint}/git/commits/{commit}")
+    tree = gh(f"{endpoint}/git/trees/{obj['tree']['sha']}?recursive=1")
+    require(tree.get("truncated") is False, "tree_truncated")
+    rows = {x["path"]: (x["mode"], x["type"], x["sha"]) for x in tree["tree"]
+            if x["type"] != "tree"}
+    require(len(rows) == sum(x["type"] != "tree" for x in tree["tree"]), "tree_duplicate")
+    return rows
+
+
+def receipt_for(receipt, report, advice, raw, p, number, head, master, mode):
+    receipt.update(state="AUTO_POLICY_SELECTED_PENDING_MERGE",
+                   semantic_evidence="MODEL_ADVISORY_OWNER_POLICY_AUTHORIZED",
+                   pr=number, approved_head=head, master_base=master,
+                   actor=BOT, proposal_file_sha256=compass.digest(raw),
+                   auto_adoption={"mode": mode, "policy_sha256": compass.digest(
+                       json.dumps(p, sort_keys=True, ensure_ascii=True)), **advice})
+    return receipt
+
+
+def verify_prepared(endpoint, master, pr, registries, p):
+    """Reconstruct expected data only; never check out or execute candidate code."""
+    number, head = pr["number"], pr["head"]["sha"]
+    pr = read_pr(endpoint, number, head)
+    identity = pr["head"]["ref"].removeprefix("compass-proposals/")
+    receipt_path = f"adoptions/{identity}.json"
+    receipt = adoption.parse_json(read_data(endpoint, receipt_path, head, 40000), 40000)
+    old, origin = receipt["master_base"], receipt["approved_head"]
+    require(adoption.commit_sha(old) and adoption.commit_sha(origin)
+            and receipt["state"] == "AUTO_POLICY_SELECTED_PENDING_MERGE"
+            and receipt["auto_adoption"]["mode"] == "conservative"
+            and receipt["pr"] == number, "prepared_receipt_scope")
+    obj = gh(f"{endpoint}/git/commits/{head}")
+    require([v["sha"] for v in obj["parents"]] == [origin, old], "prepared_parents")
+    require(same_registry(endpoint, old, master), "prepared_registry_changed")
+    source_id = receipt["source_id"]
+    require(compass.ID.fullmatch(source_id), "prepared_source_id")
+    path = f"proposals/{source_id}/{identity}.json"
+    raw = read_data(endpoint, path, origin, adoption.MAX_PROPOSAL)
+    report = adoption.parse_json(raw, adoption.MAX_PROPOSAL)
+    require(adoption.proposal_path(report) == path, "prepared_proposal_identity")
+    original = gh(f"{endpoint}/git/commits/{origin}")
+    require([v["sha"] for v in original["parents"]] == [report["base_commit"]], "candidate_parent")
+    original_base = tree_files(endpoint, report["base_commit"])
+    require(path not in original_base, "candidate_already_present")
+    expected_origin = {**original_base, path: ("100644", "blob", blob_id(raw))}
+    require(tree_files(endpoint, origin) == expected_origin, "candidate_commit_scope")
+    advice = selected_advice(comments_for(endpoint, number), report, origin)
+    require(advice is not None and same_registry(endpoint, advice["registry_base"], master),
+            "prepared_advice_changed")
+    s, t, practices, g, audit = registries
+    source = s.get(source_id)
+    require(source and source["url"] == report["source_url"], "source_registration_changed")
+    body, fmt, _ = compass.fetch_document(source, {urlsplit(source["url"]).hostname})
+    content = compass.normalize(body, fmt)
+    adoption.validate_report(report, source, practices, content)
+    require(eligible(report, advice["decisions"], t, source, content, p), "prepared_policy_changed")
+    files, expected = adoption.plan(report, advice["decisions"], *registries, content,
+                                    receipt["source_checked"])
+    expected = receipt_for(expected, report, advice, raw, p, number, origin, old, "conservative")
+    require(receipt == expected, "prepared_receipt_mismatch")
+    old_tree = tree_files(endpoint, old)
+    current_tree = tree_files(endpoint, master)
+    require(all(old_tree.get(k) == current_tree.get(k) for k in adoption.DATA_PATHS)
+            and path not in old_tree and receipt_path not in old_tree
+            and path not in current_tree and receipt_path not in current_tree, "prepared_data_base_changed")
+    additions = {**files, path: raw, receipt_path: adoption.encode(expected)}
+    # Unchanged files retain their existing bytes. The preparation wrote only
+    # files whose generated text differed from the original trusted checkout.
+    expected_delta = {k: v for k, v in additions.items()
+                      if old_tree.get(k) != ("100644", "blob", blob_id(v))}
+    require("registry/practices.json" in expected_delta
+            and "registry/audit.json" not in expected_delta, "auto_write_scope")
+    expected_old_tree = {**old_tree, **{k: ("100644", "blob", blob_id(v))
+                                       for k, v in expected_delta.items()}}
+    require(tree_files(endpoint, head) == expected_old_tree, "prepared_tree_mismatch")
+    expected_merge_tree = {**current_tree, **{k: ("100644", "blob", blob_id(v))
+                                            for k, v in expected_delta.items()}}
+    return files, expected_merge_tree, receipt_path
+
+
+def registries_now():
+    s, t, practices = compass.load_registry()
+    return (s, t, practices, generator.load_generation(t, practices),
+            compass.read_json(ROOT / "registry/audit.json"))
+
+
+def validation_title(number, head, master, nonce):
+    return f"Adoption validation PR {number} {head} {master} {nonce}"
+
+
+def dispatch_validation(endpoint, master, number, head, env, sleep=time.sleep):
+    nonce = env.get("GITHUB_RUN_ID", "") + "-" + env.get("GITHUB_RUN_ATTEMPT", "")
+    require(re.fullmatch(r"[0-9]+-[0-9]+", nonce), "validation_nonce")
+    title = validation_title(number, head, master, nonce)
+    require(adoption.current_ref(endpoint, "master") == master, "master_changed_before_ci")
+    result = gh("--method", "POST", "-H", "X-GitHub-Api-Version: 2026-03-10",
+                f"{endpoint}/actions/workflows/validate-adoption.yml/dispatches",
+                payload={"ref": "master", "inputs": {"proposal_pr": str(number),
+                         "prepared_head": head, "expected_master": master, "nonce": nonce}})
+    run_id = result.get("workflow_run_id") if isinstance(result, dict) else None
+    # Older API behavior may return 204. Bind to a unique run-name, never
+    # accept the latest arbitrary successful run.
+    for attempt in range(48):
+        if run_id is None:
+            runs = gh(f"{endpoint}/actions/workflows/validate-adoption.yml/runs?event=workflow_dispatch&branch=master&head_sha={master}&per_page=100")
+            matched = [r for r in runs["workflow_runs"] if r.get("display_title") == title]
+            require(len(matched) <= 1, "validation_run_ambiguous")
+            if matched:
+                run_id = matched[0]["id"]
+        if run_id is not None:
+            require(type(run_id) is int and run_id > 0, "validation_run_id")
+            run = gh(f"{endpoint}/actions/runs/{run_id}")
+            require(run["head_sha"] == master and run["head_branch"] == "master"
+                    and run["event"] == "workflow_dispatch" and run["path"] == ".github/workflows/validate-adoption.yml"
+                    and run["display_title"] == title and run["actor"]["login"] == BOT, "validation_run_identity")
+            if run["status"] == "completed":
+                require(run["conclusion"] == "success", "validation_ci_failed")
+                jobs = gh(f"{endpoint}/actions/runs/{run_id}/jobs?per_page=100")
+                require(jobs["total_count"] == 1 and jobs["jobs"][0]["name"] == "validate"
+                        and jobs["jobs"][0]["conclusion"] == "success"
+                        and any(x["name"] == "Validate exact prepared adoption" and x["conclusion"] == "success"
+                                for x in jobs["jobs"][0]["steps"]), "validation_job_missing")
+                print("AUTO_ADOPTION_CI_VERIFIED", run_id, head, flush=True)
+                return
+        if attempt < 47:
+            sleep(10)
+    raise ValueError("validation_ci_timeout")
+
+
+def validate_dispatched(repo, master, env):
+    require(repo == REPO and adoption.commit_sha(master)
+            and env.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
+            and env.get("GITHUB_ACTOR") == BOT and env.get("TRIGGERING_ACTOR") == BOT
+            and env.get("EXPECTED_MASTER") == master, "validation_execution_context")
+    number, head = env.get("PROPOSAL_PR", ""), env.get("PREPARED_HEAD", "")
+    require(re.fullmatch(r"[1-9][0-9]{0,9}", number) and adoption.commit_sha(head),
+            "validation_inputs")
+    endpoint = f"repos/{repo}"
+    require(adoption.current_ref(endpoint, "master") == master, "master_changed")
+    pr = read_pr(endpoint, int(number), head)
+    files, _, _ = verify_prepared(endpoint, master, pr, registries_now(), policy())
+    adoption.validate_build(files)
+    require(adoption.current_ref(endpoint, "master") == master, "master_changed_during_validation")
+    read_pr(endpoint, int(number), head)
+    print("EXACT_PREPARED_ADOPTION_VALIDATED", head, flush=True)
+    return 0
+
+
+def only_optional_bot_ci_pending(endpoint, head):
+    """Do not approve pending PR runs. A successful trusted dispatch replaces
+    the local validation evidence only; GitHub's merge rules remain authoritative."""
+    branch = gh(f"{endpoint}/branches/master")
+    if branch.get("protected") is not False:
+        return False
+    checks = gh(f"{endpoint}/commits/{head}/check-runs?per_page=100")
+    if checks["total_count"] != len(checks["check_runs"]) or any(
+            c["status"] != "completed" or c["conclusion"] not in {"success", "neutral", "skipped"}
+            for c in checks["check_runs"]):
+        return False
+    status = gh(f"{endpoint}/commits/{head}/status?per_page=100")
+    if status["total_count"] != len(status["statuses"]) or any(
+            x["state"] != "success" for x in status["statuses"]):
+        return False
+    runs = gh(f"{endpoint}/actions/runs?head_sha={head}&per_page=100")
+    if runs["total_count"] != len(runs["workflow_runs"]):
+        return False
+    pending = [r for r in runs["workflow_runs"] if r["status"] != "completed"
+               or r["conclusion"] != "success"]
+    return bool(pending) and all(r["head_sha"] == head and r["event"] == "pull_request"
+              and r["path"] == ".github/workflows/validate.yml"
+              and r["actor"]["login"] == BOT and r["status"] == "completed"
+              and r["conclusion"] == "action_required" for r in pending)
 
 
 def prepare(endpoint, master, candidate, registries, p, mode):
@@ -188,13 +388,7 @@ def prepare(endpoint, master, candidate, registries, p, mode):
     number, head, branch = pr["number"], pr["head"]["sha"], pr["head"]["ref"]
     files, receipt = adoption.plan(report, advice["decisions"], *registries, content,
                                     datetime.now(timezone.utc).date().isoformat())
-    # Do not misrepresent model advice as a per-candidate human review.
-    receipt.update(state="AUTO_POLICY_SELECTED_PENDING_MERGE",
-                   semantic_evidence="MODEL_ADVISORY_OWNER_POLICY_AUTHORIZED",
-                   pr=number, approved_head=head, master_base=master,
-                   actor=BOT, proposal_file_sha256=compass.digest(raw),
-                   auto_adoption={"mode": mode, "policy_sha256": compass.digest(
-                       json.dumps(p, sort_keys=True, ensure_ascii=True)), **advice})
+    receipt = receipt_for(receipt, report, advice, raw, p, number, head, master, mode)
     receipt_path = f"adoptions/{report['identity']}.json"
     require(not (ROOT / receipt_path).exists() and not (ROOT / path).exists(), "already_adopted_or_merged")
     changed = {k: v for k, v in files.items() if (ROOT / k).read_text(encoding="utf-8") != v}
@@ -221,16 +415,18 @@ def prepare(endpoint, master, candidate, registries, p, mode):
     return number, new["sha"], result["sha"], receipt_path
 
 
-def merge_and_publish(endpoint, master, prepared, sleep=time.sleep):
+def merge_and_publish(endpoint, master, prepared, env, sleep=time.sleep):
     number, head, expected_tree, receipt_path = prepared
     require(adoption.current_ref(endpoint, "master") == master, "master_changed_before_merge")
-    pr = read_pr(endpoint, number, head, draft=True)
-    # Drafts cannot merge. Mark ready, never approve or bypass checks.
-    query = ("mutation($id:ID!){markPullRequestReadyForReview(input:{pullRequestId:$id})"
-             "{pullRequest{isDraft headRefOid}}}")
-    result = gh("graphql", payload={"query": query, "variables": {"id": pr["node_id"]}})
-    require(not result.get("errors") and result["data"]["markPullRequestReadyForReview"]["pullRequest"]
-            == {"isDraft": False, "headRefOid": head}, "ready_for_review_failed")
+    dispatch_validation(endpoint, master, number, head, env, sleep)
+    pr = read_pr(endpoint, number, head)
+    # Drafts cannot merge. Mark ready only if still draft.
+    if pr["draft"]:
+        query = ("mutation($id:ID!){markPullRequestReadyForReview(input:{pullRequestId:$id})"
+                 "{pullRequest{isDraft headRefOid}}}")
+        result = gh("graphql", payload={"query": query, "variables": {"id": pr["node_id"]}})
+        require(not result.get("errors") and result["data"]["markPullRequestReadyForReview"]["pullRequest"]
+                == {"isDraft": False, "headRefOid": head}, "ready_for_review_failed")
     for attempt in range(4):
         pr = read_pr(endpoint, number, head, draft=False)
         if pr.get("mergeable") is not None and pr.get("mergeable_state") != "unknown":
@@ -239,7 +435,9 @@ def merge_and_publish(endpoint, master, prepared, sleep=time.sleep):
             sleep(3)
     # Existing branch rules and checks are authoritative. No --admin, approval or
     # invented check status. If checks are pending/blocked, leave prepared PR for Owner.
-    if pr.get("mergeable") is not True or pr.get("mergeable_state") != "clean":
+    state = pr.get("mergeable_state")
+    acceptable = state == "clean" or (state == "unstable" and only_optional_bot_ci_pending(endpoint, head))
+    if pr.get("mergeable") is not True or not acceptable:
         print("AUTO_ADOPTION_PENDING_GITHUB_CHECKS", number, flush=True)
         return "PENDING"
     require(pr["base"]["sha"] == master and adoption.current_ref(endpoint, "master") == master,
@@ -253,8 +451,10 @@ def merge_and_publish(endpoint, master, prepared, sleep=time.sleep):
     sha = merged["sha"]
     print("AUTO_ADOPTION_MERGED", number, sha, flush=True)
     actual = gh(f"{endpoint}/git/commits/{sha}")
-    require(actual["tree"]["sha"] == expected_tree
-            and [v["sha"] for v in actual["parents"]] == [master, head], "merged_tree_or_base_changed")
+    tree_matches = (tree_files(endpoint, sha) == expected_tree if isinstance(expected_tree, dict)
+                    else actual["tree"]["sha"] == expected_tree)
+    require(tree_matches and [v["sha"] for v in actual["parents"]] == [master, head],
+            "merged_tree_or_base_changed")
     require(adoption.current_ref(endpoint, "master") == sha, "master_advanced_after_merge")
     # GITHUB_TOKEN merges do not trigger ordinary push workflows. Explicit dispatch
     # is supported; existing portal-health workflow verifies the published snapshot.
@@ -279,15 +479,29 @@ def run(repo, master, env, event):
     p = policy()
     endpoint = f"repos/{repo}"
     require(adoption.current_ref(endpoint, "master") == master, "master_changed")
-    s, t, practices = compass.load_registry()
-    registries = (s, t, practices, generator.load_generation(t, practices),
-                  compass.read_json(ROOT / "registry/audit.json"))
+    registries = registries_now()
     pages = gh("--paginate", "--slurp", f"{endpoint}/pulls?state=open&base=master&per_page=100")
-    candidates = [pr for page in pages for pr in page if pr["draft"] is True
-                  and pr["user"]["login"] == BOT and pr["head"]["repo"]
+    candidates = [pr for page in pages for pr in page if pr["user"]["login"] == BOT and pr["head"]["repo"]
                   and pr["head"]["repo"]["full_name"] == REPO
                   and re.fullmatch(r"compass-proposals/[a-f0-9]{64}", pr["head"]["ref"])]
     for pr in sorted(candidates, key=lambda v: v["number"]):
+        # Resume only bot-policy conservative receipts; never touch an owner
+        # selection or assisted draft. No new candidate commit or LLM call.
+        if mode == "conservative":
+            identity = pr["head"]["ref"].removeprefix("compass-proposals/")
+            changed = gh("--paginate", "--slurp", f"{endpoint}/pulls/{pr['number']}/files?per_page=100")
+            if any(x["filename"] == f"adoptions/{identity}.json" for page in changed for x in page):
+                try:
+                    _, expected_tree, receipt_path = verify_prepared(endpoint, master, pr, registries, p)
+                except (ValueError, KeyError, TypeError, IndexError, OSError):
+                    print("AUTO_ADOPTION_OWNER_REVIEW_REQUIRED", pr["number"], flush=True)
+                    continue
+                print("AUTO_ADOPTION_RESUMED", pr["number"], pr["head"]["sha"], flush=True)
+                merge_and_publish(endpoint, master, (pr["number"], pr["head"]["sha"],
+                                  expected_tree, receipt_path), env)
+                return 0
+        if pr["draft"] is not True:
+            continue
         try:
             candidate = check_candidate(endpoint, pr, master, registries, p)
         except (ValueError, KeyError, TypeError, IndexError, OSError):
@@ -299,7 +513,7 @@ def run(repo, master, env, event):
         # At most one preparation per run: validated local registry is then modified.
         prepared = prepare(endpoint, master, candidate, registries, p, mode)
         if mode == "conservative":
-            merge_and_publish(endpoint, master, prepared)
+            merge_and_publish(endpoint, master, prepared, env)
         return 0
     print("AUTO_ADOPTION_NO_ELIGIBLE_CANDIDATE")
     return 0
@@ -307,6 +521,9 @@ def run(repo, master, env, event):
 
 if __name__ == "__main__":
     try:
+        if sys.argv[1:] == ["--validate-prepared"]:
+            sys.exit(validate_dispatched(os.environ.get("GITHUB_REPOSITORY"), os.environ.get("GITHUB_SHA"), os.environ))
+        require(not sys.argv[1:], "unknown_arguments")
         sys.exit(run(os.environ.get("GITHUB_REPOSITORY"), os.environ.get("GITHUB_SHA"),
                      os.environ, os.environ.get("GITHUB_EVENT_NAME")))
     except Exception as exc:

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.10.1 — 2026-11-27
+
+- Resume interrupted conservative adoption from exact immutable receipt and full tree, bounded PR propagation polling, explicit trusted read-only validation dispatch, and ordinary merge/Pages publication without approving pending PR workflows or bypassing rules.
+
 ## 0.10.0 — 2026-11-27
 
 - Owner-opt-in controlled auto adoption and Pages dispatch for narrowly scoped, fully supported additions; no additional LLM calls. Model ID overrides via Actions Variables, bounded historical quota accounting, and unchanged free-tier gates.

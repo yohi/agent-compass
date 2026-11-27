@@ -73,30 +73,77 @@ class AutoAdoptionTests(unittest.TestCase):
                           {"type": "file", "sha": "old"}, {"type": "file", "sha": "new"}]):
             self.assertFalse(a.same_registry(self.endpoint, self.head, self.master))
 
+    def test_read_pr_bounded_propagation(self):
+        branch = "compass-proposals/" + "c"*64
+        pr = {"state": "open", "draft": True, "user": {"login": a.BOT},
+              "head": {"sha": self.head, "ref": branch, "repo": {"full_name": a.REPO}},
+              "base": {"ref": "master", "repo": {"full_name": a.REPO}}}
+        lag = {**pr, "head": {**pr["head"], "sha": "d"*40}}
+        with patch.object(a, "gh", side_effect=[lag, pr]), \
+                patch.object(adoption, "current_ref", return_value=self.head):
+            self.assertEqual(a.read_pr(self.endpoint, 4, self.head, sleep=lambda _: None), pr)
+        with patch.object(a, "gh", return_value=lag), \
+                patch.object(adoption, "current_ref", return_value="e"*40):
+            with self.assertRaisesRegex(ValueError, "prepared_ref_changed"):
+                a.read_pr(self.endpoint, 4, self.head, sleep=lambda _: None)
+
+    def test_validation_dispatch_requires_exact_successful_job(self):
+        env = {"GITHUB_RUN_ID": "42", "GITHUB_RUN_ATTEMPT": "1"}
+        run = {"head_sha": self.master, "head_branch": "master", "event": "workflow_dispatch",
+               "path": ".github/workflows/validate-adoption.yml",
+               "display_title": a.validation_title(4, self.head, self.master, "42-1"),
+               "actor": {"login": a.BOT}, "status": "completed", "conclusion": "success"}
+        jobs = {"total_count": 1, "jobs": [{"name": "validate", "conclusion": "success",
+                "steps": [{"name": "Validate exact prepared adoption", "conclusion": "success"}]}]}
+        with patch.object(adoption, "current_ref", return_value=self.master), \
+                patch.object(a, "gh", side_effect=[{"workflow_run_id": 5}, run, jobs]):
+            a.dispatch_validation(self.endpoint, self.master, 4, self.head, env, sleep=lambda _: None)
+        with patch.object(adoption, "current_ref", return_value=self.master), \
+                patch.object(a, "gh", side_effect=[{"workflow_run_id": 5}, run, {"total_count": 0, "jobs": []}]):
+            with self.assertRaisesRegex(ValueError, "validation_job_missing"):
+                a.dispatch_validation(self.endpoint, self.master, 4, self.head, env, sleep=lambda _: None)
+
+    def test_optional_pending_only(self):
+        pending = {"head_sha": self.head, "event": "pull_request", "path": ".github/workflows/validate.yml",
+                   "actor": {"login": a.BOT}, "status": "completed", "conclusion": "action_required"}
+        responses = [{"protected": False}, {"total_count": 0, "check_runs": []},
+                     {"total_count": 0, "statuses": []},
+                     {"total_count": 1, "workflow_runs": [pending]}]
+        with patch.object(a, "gh", side_effect=responses):
+            self.assertTrue(a.only_optional_bot_ci_pending(self.endpoint, self.head))
+        with patch.object(a, "gh", return_value={"protected": True}):
+            self.assertFalse(a.only_optional_bot_ci_pending(self.endpoint, self.head))
+        with patch.object(a, "gh", side_effect=responses[:-1] + [
+                {"total_count": 1, "workflow_runs": [{**pending, "conclusion": "failure"}]}]):
+            self.assertFalse(a.only_optional_bot_ci_pending(self.endpoint, self.head))
+
     def test_merge_dispatch_only_verified_tree(self):
         head, master, merged = self.head, self.master, "c"*40
         prepared = (4, head, "tree", "receipt")
         ready = {"data": {"markPullRequestReadyForReview": {"pullRequest":
                          {"isDraft": False, "headRefOid": head}}}}
-        pr = {"node_id": "id", "mergeable": True, "mergeable_state": "clean", "base": {"sha": master}}
+        pr = {"node_id": "id", "draft": True, "mergeable": True, "mergeable_state": "clean", "base": {"sha": master}}
         actual = {"tree": {"sha": "tree"}, "parents": [{"sha": master}, {"sha": head}]}
         with patch.object(adoption, "current_ref", side_effect=[master, master, merged]), \
+                patch.object(a, "dispatch_validation"), \
                 patch.object(a, "read_pr", return_value=pr), \
                 patch.object(a, "gh", side_effect=[ready, {"merged": True, "sha": merged}, actual, None]) as gh:
-            self.assertEqual(a.merge_and_publish(self.endpoint, master, prepared), "MERGED")
+            self.assertEqual(a.merge_and_publish(self.endpoint, master, prepared, {}), "MERGED")
             self.assertEqual(gh.call_args_list[1].kwargs["payload"]["sha"], head)
             self.assertIn("/actions/workflows/pages.yml/dispatches", gh.call_args_list[-1].args[-1])
         with patch.object(adoption, "current_ref", return_value=master), \
+                patch.object(a, "dispatch_validation"), \
                 patch.object(a, "read_pr", return_value={**pr, "mergeable_state": "blocked"}), \
                 patch.object(a, "gh", return_value=ready) as gh:
-            self.assertEqual(a.merge_and_publish(self.endpoint, master, prepared), "PENDING")
+            self.assertEqual(a.merge_and_publish(self.endpoint, master, prepared, {}), "PENDING")
             self.assertEqual(gh.call_count, 1)
         with patch.object(adoption, "current_ref", return_value=master), \
+                patch.object(a, "dispatch_validation"), \
                 patch.object(a, "read_pr", return_value=pr), \
                 patch.object(a, "gh", side_effect=[ready, {"merged": True, "sha": merged},
                     {**actual, "tree": {"sha": "wrong"}}]) as gh:
             with self.assertRaisesRegex(ValueError, "merged_tree_or_base_changed"):
-                a.merge_and_publish(self.endpoint, master, prepared)
+                a.merge_and_publish(self.endpoint, master, prepared, {})
             self.assertEqual(gh.call_count, 3)
 
 

@@ -30,7 +30,7 @@ remain valid, and the aggregate daily cap remains 70. Advisory caps remain
 - manual (or unset): no auto adoption.
 - assisted: prepare a validated candidate PR diff, leave draft for Owner.
 - conservative: prepare, mark ready, merge via the ordinary GitHub API
-  only when GitHub reports clean/mergeable, then dispatch Pages.
+  only after trusted CI and GitHub mergeability checks, then dispatch Pages.
   Other values are unsupported; no extended mode.
 
 Policy is registry/adoption-policy.json. Only exact model/family scoped
@@ -50,16 +50,26 @@ and model; it does not assert human semantic evidence review.
 Runs after successful master advisory, daily 05:57 UTC (14:57 JST), or
 Owner manual dispatch. At most one preparation per run. Uses existing
 adoption concurrency group. If registry changed since advice, leave for
-Owner; no automatic repeated LLM review. Only unmodified candidate drafts
-are eligible. Prepared but blocked PRs remain for manual disposition;
-do not automatically amend/retry them. A manual mode change stops newly
+Owner; no automatic repeated LLM review. Only unmodified candidate drafts may be prepared.
+A previously prepared conservative-policy PR may resume without changing
+its commit, only if the complete tree, original candidate, policy receipt,
+advisory, source and unchanged registry base are reconstructed exactly.
+Assisted/owner-selected or modified preparations remain manual. A manual mode change stops newly
 started jobs, not a job already executing; cancel any active run to stop it.
 
 ## Merge and publication
 
-Mark the selected draft ready, require GitHub clean/mergeable, use exact
-HEAD SHA and ordinary merge (no forced push, approval or rule bypass).
-Required checks may not run on bot pushes; if pending, leave for Owner.
+Dispatch Validate prepared adoption on trusted master, with exact PR,
+HEAD, base and unique run identity. Its read-only job reconstructs and
+validates only data files; no candidate code is executed. Wait for that
+exact successful job and test step. Bounded PR state polling tolerates
+propagation lag only if the branch ref is exact. Mark draft ready, then
+use ordinary GitHub merge with exact HEAD. No approval, check status
+fabrication or rule bypass. On an unprotected master only, the known
+bot-triggered Validate registry action_required run may be nonblocking
+after the separate successful trusted validation; any other failing or
+pending checks/statuses, protected branch or actual merge-rule refusal
+remain blocking. This does not satisfy or override required PR checks.
 Check current master immediately before merge and verify merged commit
 parents/tree afterwards. GitHub merge API's expected SHA guards HEAD,
 not an atomic expected master SHA: concurrent base changes are a residual
