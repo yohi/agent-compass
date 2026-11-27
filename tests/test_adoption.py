@@ -1,3 +1,4 @@
+import base64
 import copy
 import json
 import unittest
@@ -15,7 +16,7 @@ class AdoptionTests(unittest.TestCase):
         self.g = generator.load_generation(self.t, self.p)
         self.audit = compass.read_json(compass.ROOT / "registry/audit.json")
         self.source = self.s["agents-md"]
-        self.content = "The official document provides project setup guidance and test commands."
+        self.content = "The official document provides project setup guidance and test commands. This synthetic fixture contains enough text for the production normalizer."
         row = maintenance.observe(maintenance.empty_state(), self.source, self.content, "2026-11-27")
         self.item = {"action": "add", "practice_id": "", "target": "common",
                      "category": "persistent-instructions", "status": "candidate",
@@ -119,6 +120,50 @@ class AdoptionTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "fixture_failure"):
                 a.run(a.REPO, "a"*40, 4, "b"*40, json.dumps(self.selected), "yohi", "yohi", "yohi", True)
             gh.assert_not_called()
+
+    def test_candidate_blob_scope_and_parent(self):
+        report = self.report
+        path = a.proposal_path(report)
+        raw = json.dumps(report).encode()
+        blob = "c"*40
+        branch = "compass-proposals/" + report["identity"]
+        pr = {"head": {"ref": branch}}
+        file = {"filename": path, "status": "added", "sha": blob}
+        entry = {"type": "file", "encoding": "base64", "sha": blob, "size": len(raw),
+                 "content": base64.b64encode(raw).decode()}
+        replies = [[[file]], entry, {"parents": [{"sha": report["base_commit"]}]},
+                   {"ahead_by": 1, "behind_by": 0, "files": [file]}]
+        with patch.object(a, "gh", side_effect=replies):
+            self.assertEqual(a.get_candidate("repos/"+a.REPO, 4, "b"*40, pr),
+                             (report, path, raw.decode()))
+        with patch.object(a, "gh", return_value=[[file, {"filename": "unexpected.py"}]]):
+            with self.assertRaisesRegex(ValueError, "not_candidate_only_pr"):
+                a.get_candidate("repos/"+a.REPO, 4, "b"*40, pr)
+
+    def test_publish_only_same_candidate_branch(self):
+        master, head, new = "a"*40, "b"*40, "c"*40
+        branch = "compass-proposals/" + self.report["identity"]
+        pr = {"head": {"ref": branch}}
+        path = a.proposal_path(self.report)
+        with patch.object(a, "current_ref", side_effect=[master, master, head, master, head, new]), \
+                patch.object(a, "get_pr", return_value=pr), \
+                patch.object(a, "get_candidate", return_value=(self.report, path, json.dumps(self.report))), \
+                patch.object(compass, "fetch_document", return_value=(self.content, "text", self.source["url"])), \
+                patch.object(a, "validate_build") as build, \
+                patch.object(a, "gh", side_effect=[{"tree": {"sha": "d"*40}},
+                             {"sha": "e"*40}, {"sha": new}, {"object": {"sha": new}}]) as gh:
+            self.assertEqual(a.run(a.REPO, master, 4, head, json.dumps(self.selected),
+                                   "yohi", "yohi", "yohi", True), 0)
+            build.assert_called_once()
+            calls = gh.call_args_list
+            self.assertEqual(calls[1].args[:3], ("--method", "POST", "repos/"+a.REPO+"/git/trees"))
+            paths = {r["path"] for r in calls[1].kwargs["payload"]["tree"]}
+            self.assertTrue({"registry/practices.json", "registry/generation.json", "docs/BEST_PRACTICES.md",
+                             path, "adoptions/"+self.report["identity"]+".json"} <= paths)
+            self.assertTrue(paths <= set(a.DATA_PATHS) | {path, "adoptions/"+self.report["identity"]+".json"})
+            self.assertEqual(calls[2].kwargs["payload"]["parents"], [head, master])
+            self.assertEqual(calls[3].args, ("--method", "PATCH", "repos/"+a.REPO+"/git/refs/heads/"+branch))
+            self.assertEqual(calls[3].kwargs["payload"], {"sha": new, "force": False})
 
 
 if __name__ == "__main__":
