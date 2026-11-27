@@ -40,6 +40,20 @@ class AdvisoryTests(unittest.TestCase):
         self.answer = {"items": [{"index": 1, "verdict": "ADOPT", "reason": "根拠が一致。",
                                   "decision": self.decision}]}
 
+    def test_model_variables(self):
+        c = a.config({"NVIDIA_PRIMARY_MODEL": "example/model-v2",
+                      "OPENROUTER_MODEL": "example/model:free",
+                      "GROQ_MODEL": "example/model-v3"})
+        self.assertEqual(c["providers"][0]["model"], "example/model-v2")
+        self.assertNotIn("reasoning_effort", c["providers"][0])
+        self.assertEqual(c["providers"][2]["model"], "example/model:free")
+        self.assertEqual(c["providers"][3]["model"], "example/model-v3")
+        for env in ({"OPENROUTER_MODEL": "example/paid"}, {"OPENROUTER_MODEL": "openrouter/free:free"},
+                    {"NVIDIA_PRIMARY_MODEL": "https://example.invalid"},
+                    {"NVIDIA_PRIMARY_MODEL": "z-ai/glm-5.3-flash"}):
+            with self.assertRaises(ValueError):
+                a.config(env)
+
     def test_provider_gates_and_price_guard(self):
         env = {"NVIDIA_API_KEY": "fake", "NVIDIA_FREE_TIER_CONFIRMED": "true",
                "NVIDIA_PROTOTYPE_USE_CONFIRMED": "true", "OPENROUTER_API_KEY": "fake",

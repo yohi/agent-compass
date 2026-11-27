@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.10.0 — 2026-11-27
+
+- Owner-opt-in controlled auto adoption and Pages dispatch for narrowly scoped, fully supported additions; no additional LLM calls. Model ID overrides via Actions Variables, bounded historical quota accounting, and unchanged free-tier gates.
+
 ## 0.9.3 — 2026-11-27
 
 - Grant pull-requests write permission only to the advisory job to address the observed HTTP 403 on PR comment publication. Preserve contents read-only access, owner gates, quotas, and advisory-only behavior.

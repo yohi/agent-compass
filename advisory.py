@@ -28,7 +28,7 @@ COMMENT_MARKER = "agent-compass-advisory-result-v1"
 ENDPOINTS = {"nvidia": "https://integrate.api.nvidia.com/v1",
              "openrouter": "https://openrouter.ai/api/v1",
              "groq": "https://api.groq.com/openai/v1"}
-# Fixed, inspected model allowlist. A new model requires an explicit code/config edit.
+# Known defaults and capabilities; configured overrides must pass exact ID and free-tier gates.
 MODELS = {"nvidia": {"moonshotai/kimi-k3.1-pro", "z-ai/glm-5.3-flash"},
           "openrouter": {"nvidia/nemotron-3-ultra-550b-a55b:free"},
           "groq": {"openai/gpt-oss-120b", "qwen/qwen3.8-27b"}}
@@ -129,7 +129,7 @@ def stage(name, number=None, row=None):
     context = f" stage={name}"
     if type(number) is int and number > 0:
         context += f" pr={number}"
-    if row and row.get("provider") in MODELS and row.get("model") in MODELS[row["provider"]]:
+    if row and valid_model(row.get("provider"), row.get("model")):
         context += f" provider={row['provider']} model={row['model']}"
     started = time.monotonic()
     print("ADVISORY_STAGE start" + context, flush=True)
@@ -143,8 +143,23 @@ def stage(name, number=None, row=None):
               flush=True)
 
 
-def config():
+MODEL_VARIABLES = ("NVIDIA_PRIMARY_MODEL", "NVIDIA_FALLBACK_MODEL", "OPENROUTER_MODEL", "GROQ_MODEL")
+
+
+def valid_model(provider, model):
+    if provider not in ENDPOINTS or not isinstance(model, str):
+        return False
+    # A path segment or provider/model ID, never a URL, router, query or credentials.
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,95}(?:/[A-Za-z0-9][A-Za-z0-9._-]{0,95})?(?::free)?", model):
+        return False
+    if provider == "openrouter":
+        return "/" in model and model.endswith(":free") and model != "openrouter/free:free"
+    return not model.endswith(":free")
+
+
+def config(env=None):
     c = compass.read_json(ROOT / "registry/advisory.json")
+    env = {} if env is None else env
     require(set(c) == {"schema_version", "daily_limit", "monthly_limit", "max_prs_per_run",
                       "max_input_bytes", "min_interval_seconds", "providers", "paid_fallback"}
             and c["schema_version"] == 1 and c["paid_fallback"] is False, "advisory_config")
@@ -154,12 +169,18 @@ def config():
         require(type(c[k]) is int and lo <= c[k] <= hi, "advisory_limit")
     seen = set()
     require(isinstance(c["providers"], list) and 1 <= len(c["providers"]) <= 6, "providers")
-    for p in c["providers"]:
+    for i, p in enumerate(c["providers"]):
         require(isinstance(p, dict) and {"provider", "model", "max_tokens"} <= set(p)
                 and set(p) <= {"provider", "model", "max_tokens", "reasoning_effort"}, "provider_fields")
-        name, model = p["provider"], p["model"]
-        require(name in MODELS and model in MODELS[name] and (name, model) not in seen,
+        name = p["provider"]
+        require(i < len(MODEL_VARIABLES) and name == ("nvidia", "nvidia", "openrouter", "groq")[i],
                 "provider_model_not_allowed")
+        override = env.get(MODEL_VARIABLES[i], "").strip()
+        if override and override != p["model"]:
+            p["model"] = override
+            p.pop("reasoning_effort", None)  # Do not inherit model-specific unsupported parameters.
+        model = p["model"]
+        require(valid_model(name, model) and (name, model) not in seen, "provider_model_not_allowed")
         seen.add((name, model))
         require(type(p["max_tokens"]) is int and 512 <= p["max_tokens"] <= 16384, "output_limit")
         if "reasoning_effort" in p:
@@ -572,7 +593,7 @@ def run(repo, master, env, event):
     if env.get("ADVISORY_ENABLED") != "true":
         print("ADVISORY_DISABLED")
         return 0
-    c = config()
+    c = config(env)
     providers = enabled_providers(c, env, event)
     if not providers:
         print("ADVISORY_NO_CONFIRMED_FREE_PROVIDER")

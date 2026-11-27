@@ -68,7 +68,7 @@ def validate_report(report, source, practices, content):
     proposal_path(report)
     require(report["schema_version"] == 1 and report["adoption_status"] == "UNADOPTED"
             and report["prior_source_text"] == "NOT_AVAILABLE" and report["origin"] in {"initial", "changed"}
-            and type(report["partial_source"]) is bool and report["model"] in maintenance.CAPS
+            and type(report["partial_source"]) is bool and maintenance.valid_model(report["model"])
             and commit_sha(report["base_commit"]), "proposal_metadata")
     require(source["id"] == report["source_id"] and source["url"] == report["source_url"],
             "source_registration_changed")

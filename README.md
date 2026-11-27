@@ -109,3 +109,5 @@ not LLM-based semantic analysis. They are not evidence of a changed recommendati
 
 日本語・英語の一覧は上記リンク。取得失敗は「変更なし」と区別する。
 公式資料の変更を検出しても推奨事項を自動採択しない。
+
+- [Controlled auto adoption and model Variables](docs/AUTO_ADOPTION.md)

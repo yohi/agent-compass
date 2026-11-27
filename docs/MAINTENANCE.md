@@ -96,3 +96,12 @@ retry handles propagation; failures are visible in Actions. No credentials.
 Offline tests exercise state, quota, input limits, validation, proposal
 idempotence, disabled behavior and portal integrity. Live API/PR acceptance
 requires owner enablement and is not inferred from offline tests.
+
+### Runtime model variables
+
+Set `GEMINI_CLASSIFY_MODEL`, `GEMINI_ANALYZE_MODEL`, `GEMINI_COMPLEX_MODEL`, or
+`GEMINI_ALTERNATE_MODEL` in repository Actions Variables to override the
+corresponding default. Confirm free-tier availability before changing IDs.
+Known model caps remain in force, new IDs are limited to five attempts per
+UTC-Pacific quota day, and the combined cap remains 70/day. Historical
+reservations are preserved across model switches. No paid fallback.

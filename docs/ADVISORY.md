@@ -36,8 +36,10 @@ Default ordered routes in registry/advisory.json:
 The free OpenRouter route requires exact :free model ID, live catalog zero
 pricing and zero max_price, with automatic provider fallback disabled.
 Model ID mismatch is rejected. No arbitrary endpoints, model router,
-BYOK or paid models. Model changes require updating the allowlist and config
-after checking official pricing/availability. Provider API features and
+BYOK or paid models. Model IDs may be overridden with GitHub Actions Variables (see
+docs/AUTO_ADOPTION.md); the provider, exact-ID checks, free-tier confirmation
+and OpenRouter zero-price checks remain mandatory. Changing a model removes
+its inherited model-specific reasoning effort. Provider API features and
 availability are not guaranteed. The code uses plain JSON replies, not
 tool calls; Groq JSON mode is requested where applicable. Exact ID
 aliases and unsupported parameters may cause DEFER.

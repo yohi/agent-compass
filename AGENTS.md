@@ -28,6 +28,7 @@ See README.md for the operating model and registry/ for canonical data.
 - The owner-only discovery registration workflow may prepare a draft registration PR from freshly observed allowlisted evidence, never merge or infer lifecycle from model mentions.
 - Distribute only the portable skill directory through APM; no duplicated rules, scripts, MCP or global configuration.
 - Independent advisory may evaluate untouched public candidate PRs and post advice only, under explicit free-tier enablement; never approve, adopt, merge, use paid fallback or execute candidate code.
-- External writes and new tasks require Human Owner approval.
+- Controlled auto adoption is a separate owner-opt-in workflow: only additive low-risk policy matches with exact bot advisory evidence may prepare/merge. Never bypass GitHub checks or merge arbitrary code. Dispatch Pages only after verified merge. Default manual.
+- External writes and new tasks require Human Owner approval; explicit auto-adoption mode authorizes only its policy-bounded operations.
 - Validate proportionately; stop when the approved scope is complete.
 - Do not initiate repeated independent reviews or corrections automatically.

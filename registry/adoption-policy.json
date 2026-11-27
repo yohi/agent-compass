@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "allowed_targets": [
+    "family",
+    "model"
+  ],
+  "allowed_categories": [
+    "reasoning",
+    "prompting",
+    "context"
+  ],
+  "allowed_statuses": [
+    "conditional",
+    "recommended"
+  ],
+  "allowed_placements": [
+    "configuration",
+    "author-guidance"
+  ],
+  "configuration_kind": "api-or-runtime",
+  "max_items": 3,
+  "max_merges_per_run": 1,
+  "require_complete_source": true
+}
