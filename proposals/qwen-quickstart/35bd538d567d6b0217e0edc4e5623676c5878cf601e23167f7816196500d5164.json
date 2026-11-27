@@ -1,0 +1,65 @@
+{
+  "adoption_status": "UNADOPTED",
+  "base_commit": "ba5d80fd6f27c692b77ef1698e9d68b5f7395285",
+  "chunk_cursor": 0,
+  "identity": "35bd538d567d6b0217e0edc4e5623676c5878cf601e23167f7816196500d5164",
+  "model": "gemini-4-hydrogen",
+  "origin": "initial",
+  "partial_source": false,
+  "prior_source_text": "NOT_AVAILABLE",
+  "proposals": [
+    {
+      "action": "add",
+      "evidence_locator": {
+        "chunk_char_offset": 3010,
+        "chunk_normalized_line": 65,
+        "quote_length": 94,
+        "quote_sha256": "b31a8a2f5a60d12c1a65441a239eb9331624ebaab3bd511c1c099ecc398e0305"
+      },
+      "existing_record_sha256": null,
+      "practice_id": "",
+      "proposed": {
+        "category": "reasoning",
+        "en": "For Qwen3, avoid greedy decoding in thinking mode and use mode-specific sampling parameters (Temperature=0.6, TopP=0.95, TopK=20, MinP=0 for thinking; Temperature=0.7, TopP=0.8, TopK=20, MinP=0 for non-thinking).",
+        "evidence": [
+          "qwen-quickstart"
+        ],
+        "ja": "Qwen3のthinking modeではグリーディデコーディングを避け、モード別の推奨サンプリング設定（thinking時はTemperature=0.6・TopP=0.95・TopK=20・MinP=0、非thinking時はTemperature=0.7・TopP=0.8・TopK=20・MinP=0）を使用する。",
+        "local_eval": "not_verified",
+        "reason": "The quickstart explicitly warns that greedy decoding causes performance degradation and endless repetitions in Qwen3 thinking mode and specifies distinct sampling settings for thinking versus non-thinking modes.",
+        "scope": "Applies to Qwen3 models; do not generalize these exact sampling values to other Qwen variants.",
+        "status": "candidate",
+        "target": "qwen"
+      }
+    },
+    {
+      "action": "add",
+      "evidence_locator": {
+        "chunk_char_offset": 9767,
+        "chunk_normalized_line": 197,
+        "quote_length": 89,
+        "quote_sha256": "b3955476453c632187cdfddc6d084b46a0ff1eb25630a64b38735dd4b168dd7c"
+      },
+      "existing_record_sha256": null,
+      "practice_id": "",
+      "proposed": {
+        "category": "reasoning",
+        "en": "When bounding Qwen3 reasoning length, tune thinking_budget above 1024 tokens for meaningful task improvements, or use enable_thinking=False if thinking is not desired.",
+        "evidence": [
+          "qwen-quickstart"
+        ],
+        "ja": "Qwen3の思考長を制限する場合は実用的な精度向上のためthinking_budgetを1024より大きく調整し、思考が不要な場合はenable_thinking=Falseのハードスイッチを使用する。",
+        "local_eval": "not_verified",
+        "reason": "The quickstart recommends tuning thinking_budget above 1024 based on acceptable latency and using the hard switch rather than a minimal budget when thinking is unwanted.",
+        "scope": "Applies to Qwen3 thinking-budget implementations (Alibaba Cloud Model Studio API or two-pass open-source generation).",
+        "status": "candidate",
+        "target": "qwen"
+      }
+    }
+  ],
+  "schema_version": 1,
+  "snapshot_identity": "b43704828125e14e63c3c9a83c91c01c3f663091d425911b81281ded2d3040fe",
+  "source_id": "qwen-quickstart",
+  "source_sha256": "58ecf4a94e8cfa71cba77b5cb72a1d84090e965afcaea1317ab9adb05bfd7e4b",
+  "source_url": "https://qwen.readthedocs.io/en/stable/getting_started/quickstart.html"
+}

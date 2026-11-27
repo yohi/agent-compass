@@ -357,6 +357,30 @@ Evidence: [qwen-quickstart](https://qwen.readthedocs.io/en/stable/getting_starte
 
 Local evaluation: not_verified
 
+### BP-053 — conditional
+
+For Qwen3, avoid greedy decoding in thinking mode and use mode-specific sampling parameters (Temperature=0.6, TopP=0.95, TopK=20, MinP=0 for thinking; Temperature=0.7, TopP=0.8, TopK=20, MinP=0 for non-thinking).
+
+Qwen3のthinking modeではグリーディデコーディングを避け、モード別の推奨サンプリング設定（thinking時はTemperature=0.6・TopP=0.95・TopK=20・MinP=0、非thinking時はTemperature=0.7・TopP=0.8・TopK=20・MinP=0）を使用する。
+
+Scope: Applies to Qwen3 models; do not generalize these exact sampling values to other Qwen variants.
+
+Evidence: [qwen-quickstart](https://qwen.readthedocs.io/en/stable/getting_started/quickstart.html)
+
+Local evaluation: not_verified
+
+### BP-054 — conditional
+
+When bounding Qwen3 reasoning length, tune thinking_budget above 1024 tokens for meaningful task improvements, or use enable_thinking=False if thinking is not desired.
+
+Qwen3の思考長を制限する場合は実用的な精度向上のためthinking_budgetを1024より大きく調整し、思考が不要な場合はenable_thinking=Falseのハードスイッチを使用する。
+
+Scope: Applies to Qwen3 thinking-budget implementations (Alibaba Cloud Model Studio API or two-pass open-source generation).
+
+Evidence: [qwen-quickstart](https://qwen.readthedocs.io/en/stable/getting_started/quickstart.html)
+
+Local evaluation: not_verified
+
 Monitored sources: [qwen-quickstart](https://qwen.readthedocs.io/en/stable/getting_started/quickstart.html), [qwen-tools](https://qwen.readthedocs.io/en/stable/framework/function_call.html)
 
 ## GPT-6.2 Astra (model)
