@@ -74,8 +74,9 @@ Transport errors, missing model, auth/payment/quota errors or service
 unavailability may proceed to the next enabled free route. Auth/payment/
 quota block that provider for the UTC day. A valid ADOPT, PARTIAL_ADOPT,
 REJECT or DEFER is final for that HEAD; malformed/incomplete responses
-defer without querying another model for a favorable verdict. A failed
-attempt without a result comment can be retried on a later day.
+produce a terminal DEFER comment without querying another model for a
+favorable verdict or retrying the same HEAD tomorrow. Transport failures
+without a result comment can be retried on a later day.
 GitHub write errors stop the run; inspect state before a manual retry.
 
 ## Evidence and output

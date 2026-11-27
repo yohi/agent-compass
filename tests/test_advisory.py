@@ -127,6 +127,16 @@ class AdvisoryTests(unittest.TestCase):
         self.assertIn("Advisory only", body)
         self.assertIn("agent-compass-advisory-result-v1:" + self.head, body)
 
+    def test_ambiguous_comment_write_stops(self):
+        result = self.validate(self.answer)
+        with patch.object(adoption, "current_ref", return_value=self.master), \
+                patch.object(adoption, "get_pr"), \
+                patch.object(a, "already_commented", return_value=False), \
+                patch.object(compass, "gh", side_effect=ValueError("bad github reply")):
+            with self.assertRaises(a.PersistenceError):
+                a.post_result("repos/"+a.REPO, 4, self.head, self.master,
+                              self.report, result, self.c["providers"][0])
+
     def test_disabled_no_io(self):
         with patch.object(compass, "gh") as gh:
             self.assertEqual(a.run(a.REPO, self.master, {}, "schedule"), 0)
@@ -152,7 +162,7 @@ class AdvisoryTests(unittest.TestCase):
                                       self.c, rows, env, self.registries)
                 return result, call.call_count, gh.call_count
         self.assertEqual(execute([fault, self.answer]), ("ADOPT", 2, 1))
-        self.assertEqual(execute([a.InvalidAnswer("bad"), self.answer]), ("DEFER", 1, 0))
+        self.assertEqual(execute([a.InvalidAnswer("bad"), self.answer]), ("DEFER", 1, 1))
         self.assertEqual(execute([{"items": [{"index": 1, "verdict": "REJECT", "reason": "fixture",
                                             "decision": None}]}, self.answer]), ("REJECT", 1, 1))
 
