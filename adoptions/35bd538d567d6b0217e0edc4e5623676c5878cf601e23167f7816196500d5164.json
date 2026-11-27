@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "state": "AUTO_POLICY_SELECTED_PENDING_MERGE",
+  "source_id": "qwen-quickstart",
+  "source_sha256": "58ecf4a94e8cfa71cba77b5cb72a1d84090e965afcaea1317ab9adb05bfd7e4b",
+  "proposal_identity": "35bd538d567d6b0217e0edc4e5623676c5878cf601e23167f7816196500d5164",
+  "source_checked": "2026-11-27",
+  "selected": [
+    {
+      "index": 1,
+      "action": "add",
+      "practice_id": "BP-053",
+      "status": "conditional",
+      "placement": "configuration",
+      "detached_audit_rules": []
+    },
+    {
+      "index": 2,
+      "action": "add",
+      "practice_id": "BP-054",
+      "status": "conditional",
+      "placement": "configuration",
+      "detached_audit_rules": []
+    }
+  ],
+  "decisions": [
+    {
+      "index": 1,
+      "status": "conditional",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "index": 2,
+      "status": "conditional",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    }
+  ],
+  "unselected": [],
+  "semantic_evidence": "MODEL_ADVISORY_OWNER_POLICY_AUTHORIZED",
+  "literal_source_locator": "VERIFIED",
+  "pr": 4,
+  "approved_head": "b1bb02e88d0f875b971fcd0de51179330f6a9dac",
+  "master_base": "6dbe1cfbaad1ae9ebd896c7865d3b35f6fc8beb4",
+  "actor": "github-actions[bot]",
+  "proposal_file_sha256": "20d358b81a0f14022a4985641fc6d6c2438eff7593f8555449b0ff68e40d2fe5",
+  "auto_adoption": {
+    "mode": "conservative",
+    "policy_sha256": "4ba6a439a86db8300f980db5005b016d91961e650120ff89d695841ed6412552",
+    "comment_id": 7212421589,
+    "comment_sha256": "1a10ef3a23c2144576d409fae269bde44b87c7a59c0b4a687711ff97eeb16dad",
+    "registry_base": "06b51ba2cedf5a5888cffdf62e9dcf1691864544",
+    "provider": "nvidia",
+    "model": "moonshotai/kimi-k3.1-pro",
+    "decisions": [
+      {
+        "index": 1,
+        "status": "conditional",
+        "placement": "configuration",
+        "configuration_kind": "api-or-runtime"
+      },
+      {
+        "index": 2,
+        "status": "conditional",
+        "placement": "configuration",
+        "configuration_kind": "api-or-runtime"
+      }
+    ]
+  }
+}

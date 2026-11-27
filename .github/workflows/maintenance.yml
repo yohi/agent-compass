@@ -31,4 +31,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           FREE_TIER_CONFIRMED: ${{ vars.GEMINI_FREE_TIER_CONFIRMED }}
+          GEMINI_CLASSIFY_MODEL: ${{ vars.GEMINI_CLASSIFY_MODEL }}
+          GEMINI_ANALYZE_MODEL: ${{ vars.GEMINI_ANALYZE_MODEL }}
+          GEMINI_COMPLEX_MODEL: ${{ vars.GEMINI_COMPLEX_MODEL }}
+          GEMINI_ALTERNATE_MODEL: ${{ vars.GEMINI_ALTERNATE_MODEL }}
         run: python maintenance.py --repo "$GITHUB_REPOSITORY" --commit "$GITHUB_SHA"

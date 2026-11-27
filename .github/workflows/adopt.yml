@@ -1,0 +1,51 @@
+name: Prepare knowledge adoption
+on:
+  workflow_dispatch:
+    inputs:
+      proposal_pr:
+        description: "Existing draft proposal PR number"
+        required: true
+        type: string
+      proposal_head:
+        description: "Exact 40-character reviewed proposal HEAD commit SHA"
+        required: true
+        type: string
+      decisions:
+        description: "JSON array of selected 1-based indices, statuses and explicit placements"
+        required: true
+        type: string
+      evidence_reviewed:
+        description: "I reviewed the official source and approve these selected candidate texts/statuses/placements"
+        type: boolean
+        default: false
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: agent-compass-adoption
+  cancel-in-progress: false
+jobs:
+  adopt:
+    if: github.repository == 'yohi/agent-compass' && github.ref == 'refs/heads/master' && github.actor == github.repository_owner && github.triggering_actor == github.repository_owner && inputs.evidence_reviewed
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Prepare selected adoption on existing PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          ADOPTION_PR: ${{ inputs.proposal_pr }}
+          ADOPTION_HEAD: ${{ inputs.proposal_head }}
+          ADOPTION_DECISIONS: ${{ inputs.decisions }}
+          EVIDENCE_REVIEWED: ${{ inputs.evidence_reviewed }}
+        run: python adoption.py

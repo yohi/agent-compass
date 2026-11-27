@@ -42,7 +42,7 @@ exported. Source change discovery does not automatically adopt recommendations.
 
 Use the repository's skills/agent-compass directory (SKILL.md plus references)
 with the chosen harness's supported skill installation mechanism, only when
-authorized. The same files are published to Pages for direct reading.
+authorized. APM supports the manifestless single-skill subdirectory; see [APM distribution](APM.md). The same files are published to Pages for direct reading.
 No automatic installation, global AGENTS.md edit or remote script execution.
 The skill tells agents to retrieve scoped guidance at task time, verify its
 scope and evidence, preserve existing project constraints and stop after the

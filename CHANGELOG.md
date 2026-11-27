@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.10.0 — 2026-11-27
+
+- Owner-opt-in controlled auto adoption and Pages dispatch for narrowly scoped, fully supported additions; no additional LLM calls. Model ID overrides via Actions Variables, bounded historical quota accounting, and unchanged free-tier gates.
+
+## 0.9.3 — 2026-11-27
+
+- Grant pull-requests write permission only to the advisory job to address the observed HTTP 403 on PR comment publication. Preserve contents read-only access, owner gates, quotas, and advisory-only behavior.
+
+## 0.9.2 — 2026-11-27
+
+- Owner-dispatched single-PR recovery of unpublished same-day attempts, preserving previous reservations, quota and provider blocks. Existing advisory comments remain terminal; no automatic re-review or ledger reset.
+
+## 0.9.1 — 2026-11-27
+
+- Advisory stage diagnostics with allowlisted provider/model, safe fixed reason codes and GitHub HTTP status extraction. No raw errors or model payloads; preserve provider policy, quotas and existing ledger.
+
+## 0.9.0 — 2026-11-27
+
+- Independent adoption advisory with bounded free-tier NVIDIA (manual prototype only), OpenRouter and Groq routes, durable request reservations, exact source/PR validation and advisory-only comments; no automatic adoption or merge.
+
+## 0.8.0 — 2026-11-27
+
+- Owner-selected discovery registration with fresh index/source evidence, scoped lifecycle records and draft registration PRs; existing Gemini maintenance after merge.
+- Manifestless APM skill distribution instructions and package contract tests.
+
+## 0.7.0 — 2026-11-27
+
+- Owner-only adoption workflow: select candidate indices/statuses/placements, verify exact source and existing records, prepare validated registry diff on the same draft PR with receipt. No automatic merge.
+
 ## 0.6.1 — 2026-11-27
 
 - Safe response/validation diagnostics with source and chunk context; constrain proposal category enum.

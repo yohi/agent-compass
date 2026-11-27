@@ -314,6 +314,16 @@
         "en": "Prefer the selected framework's skills to duplicating complete procedures in standing instructions.",
         "ja": "常設指示に全手順を重複記載せず、採用したフレームワークのSkillsを利用する。"
       }
+    },
+    {
+      "id": "BP-053",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
+    },
+    {
+      "id": "BP-054",
+      "placement": "configuration",
+      "configuration_kind": "api-or-runtime"
     }
   ]
 }

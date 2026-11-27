@@ -70,6 +70,22 @@ def load_registry():
         require(host and "." in host and not host.replace(".", "").isdigit(), "invalid source host")
         safe_url(source["url"], {host})
         require(all(source[k] for k in ("publisher", "kind", "checked")), "missing source metadata")
+    # Lifecycle is optional; legacy targets make no availability assertion.
+    for key, target in targets.items():
+        if "lifecycle" not in target:
+            continue
+        lc = target["lifecycle"]
+        require(target["kind"] == "model" and isinstance(lc, dict)
+                and set(lc) == {"status", "checked", "source_id", "source_sha256", "quote_sha256",
+                                "quote_length", "char_offset", "normalized_line"}
+                and lc["status"] in {"unknown", "preview", "generally-available", "deprecated", "retired"}
+                and re.fullmatch(r"\d{4}-\d{2}-\d{2}", lc["checked"])
+                and lc["source_id"] in sources and sources[lc["source_id"]]["target"] == key
+                and HASH.fullmatch(lc["source_sha256"]) and HASH.fullmatch(lc["quote_sha256"])
+                and type(lc["quote_length"]) is int and 8 <= lc["quote_length"] <= 150
+                and type(lc["char_offset"]) is int and lc["char_offset"] >= 0
+                and type(lc["normalized_line"]) is int and lc["normalized_line"] > 0,
+                "invalid model lifecycle evidence")
     for key, practice in practices.items():
         require(re.fullmatch(r"BP-[0-9]+", key) and practice["target"] in targets,
                 "invalid practice target")
@@ -241,6 +257,11 @@ def render(sources, targets, practices):
            "公式資料に基づく整理。ローカル実測による裏付けは未実施。", ""]
     for key, target in targets.items():
         out += [f"## {target['name']} ({target['kind']})", ""]
+        if "lifecycle" in target:
+            lc = target["lifecycle"]
+            out += [f"Lifecycle (owner-reviewed snapshot): {lc['status']} — {lc['checked']}; "
+                    f"evidence: [{lc['source_id']}]({sources[lc['source_id']]['url']}). "
+                    "Not a live availability guarantee.", ""]
         selected = [p for p in practices.values() if p["target"] == key]
         if not selected:
             out += ["No verified recommendation yet; source discovery only. / 推奨事項は未登録。", ""]

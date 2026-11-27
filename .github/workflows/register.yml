@@ -1,0 +1,41 @@
+name: Prepare discovery registration
+on:
+  workflow_dispatch:
+    inputs:
+      registration:
+        description: "Owner-selected discovery candidate and registration fields (JSON)"
+        required: true
+        type: string
+      evidence_reviewed:
+        description: "I checked the official source, exact model identity/scope and lifecycle evidence"
+        type: boolean
+        default: false
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: agent-compass-adoption
+  cancel-in-progress: false
+jobs:
+  register:
+    if: github.repository == 'yohi/agent-compass' && github.ref == 'refs/heads/master' && github.actor == github.repository_owner && github.triggering_actor == github.repository_owner && inputs.evidence_reviewed
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Prepare registration draft PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          REGISTRATION_REQUEST: ${{ inputs.registration }}
+          EVIDENCE_REVIEWED: ${{ inputs.evidence_reviewed }}
+        run: python registration.py

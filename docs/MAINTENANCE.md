@@ -23,7 +23,8 @@ not claims of newly released guidance. Later observations compare normalized
 content hashes. A bot-owned ledger issue records the latest pending snapshot,
 stage, reservations and completed disposition per source. The original
 monitor and discovery continue independently. New discovery URLs are not
-automatically registered or sent to a model.
+automatically registered or sent to a model. Owner-selected registration is supported by
+[Prepare discovery registration](REGISTRATION.md); merged sources enter this existing maintenance inventory.
 
 The old source body is not available; analysis compares current normalized
 source and linked registry records. Latest pending snapshots coalesce;
@@ -77,8 +78,9 @@ current practice digest, source URL/hash and evidence locator.
 PRs are draft, one per source snapshot/chunk identity, never auto-approved or merged.
 An existing PR (including closed) is treated as owner disposition.
 **Merging a proposal record does not adopt the guidance.** Owner verifies
-the official evidence and applies selected changes to the canonical registry,
-updates/removes stale generation placements, regenerates docs and tests.
+the official evidence and selects candidate items, statuses and placements in
+[Prepare knowledge adoption](ADOPTION.md); the owner-only workflow prepares
+the actual registry diff, regenerates docs and tests on the same candidate PR.
 This is deliberately separated from executing model-supplied patches.
 No new model/source is automatically registered. The model cannot choose
 paths, branch names, API tools, permissions or commands.
@@ -94,3 +96,12 @@ retry handles propagation; failures are visible in Actions. No credentials.
 Offline tests exercise state, quota, input limits, validation, proposal
 idempotence, disabled behavior and portal integrity. Live API/PR acceptance
 requires owner enablement and is not inferred from offline tests.
+
+### Runtime model variables
+
+Set `GEMINI_CLASSIFY_MODEL`, `GEMINI_ANALYZE_MODEL`, `GEMINI_COMPLEX_MODEL`, or
+`GEMINI_ALTERNATE_MODEL` in repository Actions Variables to override the
+corresponding default. Confirm free-tier availability before changing IDs.
+Known model caps remain in force, new IDs are limited to five attempts per
+UTC-Pacific quota day, and the combined cap remains 70/day. Historical
+reservations are preserved across model switches. No paid fallback.

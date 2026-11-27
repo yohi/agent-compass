@@ -1,0 +1,41 @@
+name: Controlled auto adoption
+on:
+  workflow_run:
+    workflows: ["Independent adoption advisory"]
+    types: [completed]
+    branches: [master]
+  schedule:
+    - cron: "57 5 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: agent-compass-adoption
+  cancel-in-progress: false
+jobs:
+  adopt:
+    if: github.repository == 'yohi/agent-compass' && github.ref == 'refs/heads/master' && (vars.KNOWLEDGE_ADOPTION_MODE == 'assisted' || vars.KNOWLEDGE_ADOPTION_MODE == 'conservative') && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.actor == github.repository_owner && github.triggering_actor == github.repository_owner) || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'master' && github.event.workflow_run.head_repository.full_name == github.repository))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: read
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Prepare and optionally merge one policy-selected candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KNOWLEDGE_ADOPTION_MODE: ${{ vars.KNOWLEDGE_ADOPTION_MODE }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          UPSTREAM_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          UPSTREAM_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
+          UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: python auto_adoption.py

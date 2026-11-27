@@ -228,5 +228,24 @@ class MaintenanceTests(unittest.TestCase):
             health.verify(files.__getitem__)
 
 
+class ModelVariableTests(unittest.TestCase):
+    def test_model_override_preserves_historical_usage(self):
+        c = m.config({"GEMINI_CLASSIFY_MODEL": "gemini-new-preview"})
+        self.assertEqual(c["models"]["classify"], {"id": "gemini-new-preview", "daily_limit": 5})
+        state = m.empty_state()
+        state["usage"] = {"gemini-3.5-flash-lite": 49, "gemini-new-preview": 5}
+        m.validate_state(state)
+        with self.assertRaises(ValueError):
+            m.config({"GEMINI_CLASSIFY_MODEL": "https://example.invalid"})
+        with self.assertRaises(ValueError):
+            m.config({"GEMINI_CLASSIFY_MODEL": "gemini-3.8-flash"})
+
+    def test_aggregate_budget_cannot_be_reset_by_model_switch(self):
+        c = m.config({"GEMINI_CLASSIFY_MODEL": "gemini-new-preview"})
+        state = m.empty_state()
+        state.update(day=m.pacific_day(), usage=dict(m.CAPS))
+        self.assertIsNone(m.reserve(state, "classify", c, lambda: self.fail("unexpected save")))
+
+
 if __name__ == "__main__":
     unittest.main()
