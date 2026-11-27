@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.1 — 2026-11-27
+
+- Advisory stage diagnostics with allowlisted provider/model, safe fixed reason codes and GitHub HTTP status extraction. No raw errors or model payloads; preserve provider policy, quotas and existing ledger.
+
 ## 0.9.0 — 2026-11-27
 
 - Independent adoption advisory with bounded free-tier NVIDIA (manual prototype only), OpenRouter and Groq routes, durable request reservations, exact source/PR validation and advisory-only comments; no automatic adoption or merge.

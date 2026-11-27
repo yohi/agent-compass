@@ -1,5 +1,6 @@
 """Independent, free-tier advisory for unadopted public knowledge candidates."""
 import copy
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 import html
@@ -65,6 +66,80 @@ class InvalidAnswer(Exception):
 def require(ok, code):
     if not ok:
         raise ValueError(code)
+
+
+# Only fixed local reason codes may be printed. Never log exception messages,
+# URLs, subprocess commands, stderr, request/response bodies or credentials.
+SAFE_REASONS = frozenset({
+    "advisory_config", "advisory_limit", "providers", "provider_fields",
+    "provider_model_not_allowed", "output_limit", "reasoning_effort",
+    "ledger_shape", "ledger_counters", "ledger_attempts", "ledger_blocks",
+    "clock_regression", "repository", "ambiguous_advisory_ledger", "ledger_marker",
+    "ledger_write_failed", "comment_write_failed", "redirect_refused",
+    "response_size", "response_json", "response_shape", "response_incomplete",
+    "model_identity_mismatch", "response_content", "input_size", "duplicate_json_key",
+    "source_registration_changed", "source_snapshot_changed", "source_identity",
+    "chunk_identity", "evidence_bounds", "evidence_mismatch",
+    "proposal_or_existing_record_changed", "advisory_context_too_large",
+    "answer_items", "answer_item", "answer_index", "answer_reason", "answer_decision",
+    "answer_status", "nonadopt_decision", "decision_count", "decision_shape",
+    "decision_index", "decision_status", "decision_placement", "status_placement_mismatch",
+    "configuration_kind", "owner_instruction", "unexpected_decision_field",
+    "retirement_status_required", "retirement_action_required", "duplicate_practice_text",
+    "master_changed", "pr_head", "pr_head_or_scope_changed", "not_candidate_only_pr",
+    "candidate_path", "candidate_blob", "candidate_size", "candidate_branch",
+    "candidate_parent", "candidate_commit_scope", "repository_or_event",
+    "pr_number", "candidate_pr_not_found", "proposal_shape", "proposal_identity",
+})
+
+
+def diagnostic(exc):
+    if isinstance(exc, HTTPError):
+        return "http_" + str(exc.code) if type(exc.code) is int and 100 <= exc.code <= 599 else "http_error"
+    if isinstance(exc, subprocess.TimeoutExpired):
+        return "github_timeout"
+    if isinstance(exc, subprocess.CalledProcessError):
+        # Only extract a numeric status from gh's standard error suffix.
+        stderr = exc.stderr
+        match = re.search(r"\(HTTP ([1-5][0-9]{2})\)\s*$", stderr) if isinstance(stderr, str) else None
+        return "github_http_" + match.group(1) if match else "github_command_failed"
+    if isinstance(exc, TimeoutError):
+        return "timeout"
+    if isinstance(exc, URLError):
+        return "url_error"
+    if isinstance(exc, json.JSONDecodeError):
+        return "json_decode"
+    if isinstance(exc, (ValueError, InvalidAnswer, PersistenceError)):
+        reason = exc.args[0] if len(exc.args) == 1 else None
+        if isinstance(reason, str) and reason in SAFE_REASONS:
+            return reason
+    for cls, code in ((PersistenceError, "persistence_error"), (InvalidAnswer, "invalid_answer"),
+                      (KeyError, "missing_field"), (TypeError, "type_error"),
+                      (IndexError, "index_error"), (ValueError, "validation_error"),
+                      (OSError, "io_error"), (subprocess.SubprocessError, "github_subprocess_error")):
+        if isinstance(exc, cls):
+            return code
+    return "unexpected_error"
+
+
+@contextmanager
+def stage(name, number=None, row=None):
+    # Stage names are local constants; only a numeric PR and allowlisted model may be appended.
+    context = f" stage={name}"
+    if type(number) is int and number > 0:
+        context += f" pr={number}"
+    if row and row.get("provider") in MODELS and row.get("model") in MODELS[row["provider"]]:
+        context += f" provider={row['provider']} model={row['model']}"
+    started = time.monotonic()
+    print("ADVISORY_STAGE start" + context, flush=True)
+    try:
+        yield
+    except Exception as exc:
+        print("ADVISORY_STAGE failed" + context + " code=" + diagnostic(exc), flush=True)
+        raise
+    else:
+        print("ADVISORY_STAGE ok" + context + f" elapsed_ms={int((time.monotonic()-started)*1000)}",
+              flush=True)
 
 
 def config():
@@ -150,7 +225,8 @@ class Ledger:
     def __init__(self, repo):
         require(repo == REPO, "repository")
         self.endpoint = f"repos/{repo}/issues"
-        pages = compass.gh("--paginate", "--slurp", self.endpoint + "?state=all&per_page=100")
+        with stage("ledger_lookup"):
+            pages = compass.gh("--paginate", "--slurp", self.endpoint + "?state=all&per_page=100")
         matches = [i for page in pages for i in page if "pull_request" not in i and
                    i["title"] == TITLE and i["user"]["login"] == "github-actions[bot]"]
         require(len(matches) <= 1, "ambiguous_advisory_ledger")
@@ -161,14 +237,16 @@ class Ledger:
             self.state = validate_state(adoption.parse_json(body.split(MARKER)[1][:-4], 20000))
         else:
             self.state = empty_state(utc_day())
-            issue = compass.gh("--method", "POST", self.endpoint,
-                               payload={"title": TITLE, "body": state_body(self.state)})
+            with stage("ledger_create"):
+                issue = compass.gh("--method", "POST", self.endpoint,
+                                   payload={"title": TITLE, "body": state_body(self.state)})
         self.number = issue["number"]
 
     def save(self):
         try:
-            compass.gh("--method", "PATCH", f"{self.endpoint}/{self.number}",
-                       payload={"body": state_body(self.state)})
+            with stage("ledger_save"):
+                compass.gh("--method", "PATCH", f"{self.endpoint}/{self.number}",
+                           payload={"body": state_body(self.state)})
         except (ValueError, OSError, subprocess.SubprocessError):
             raise PersistenceError("ledger_write_failed") from None
 
@@ -204,8 +282,11 @@ def http_json(url, key, payload=None, limit=MAX_RESPONSE):
         headers["Content-Type"] = "application/json"
         data = json.dumps(payload, ensure_ascii=False).encode()
     request = Request(url, data=data, headers=headers)
-    with build_opener(maintenance.NoRedirect()).open(request, timeout=180) as response:
-        raw = response.read(limit + 1)
+    with stage("http_open"):
+        response = build_opener(maintenance.NoRedirect()).open(request, timeout=180)
+    with response:
+        with stage("http_read"):
+            raw = response.read(limit + 1)
     if len(raw) > limit:
         raise InvalidAnswer("response_size")
     try:
@@ -245,7 +326,9 @@ def payload_for(row, prompt):
 
 
 def call_model(row, key, prompt):
-    data = http_json(ENDPOINTS[row["provider"]] + "/chat/completions", key, payload_for(row, prompt))
+    with stage("model_http_response", row=row):
+        data = http_json(ENDPOINTS[row["provider"]] + "/chat/completions", key, payload_for(row, prompt))
+    # A parsed transport response is distinct from a valid model judgment.
     try:
         if not isinstance(data, dict) or len(data["choices"]) != 1:
             raise InvalidAnswer("response_shape")
@@ -259,7 +342,10 @@ def call_model(row, key, prompt):
         content = choice["message"]["content"]
         if not isinstance(content, str):
             raise InvalidAnswer("response_content")
-        return adoption.parse_json(content, 24000)
+        try:
+            return adoption.parse_json(content, 24000)
+        except (ValueError, UnicodeError):
+            raise InvalidAnswer("response_json") from None
     except (KeyError, TypeError, ValueError, IndexError):
         raise InvalidAnswer("response_shape") from None
 
@@ -370,15 +456,20 @@ def invalid_result(report):
 
 
 def post_result(endpoint, number, head, master, report, result, row):
-    require(adoption.current_ref(endpoint, "master") == master, "master_changed")
-    adoption.get_pr(endpoint, number, head)
-    if not already_commented(endpoint, number, head):
+    with stage("publish_master_check", number, row):
+        require(adoption.current_ref(endpoint, "master") == master, "master_changed")
+    with stage("publish_pr_head_check", number, row):
+        adoption.get_pr(endpoint, number, head)
+    with stage("publish_comment_lookup", number, row):
+        exists = already_commented(endpoint, number, head)
+    if not exists:
         try:
-            compass.gh("--method", "POST", f"{endpoint}/issues/{number}/comments",
-                       payload={"body": comment_body(head, master, report, result, row)})
+            with stage("publish_comment_write", number, row):
+                compass.gh("--method", "POST", f"{endpoint}/issues/{number}/comments",
+                           payload={"body": comment_body(head, master, report, result, row)})
         except (ValueError, OSError, subprocess.SubprocessError):
             raise PersistenceError("comment_write_failed") from None
-    print(f"PR #{number}: {result['verdict']} ({row['provider']})")
+    print(f"PR #{number}: {result['verdict']} ({row['provider']})", flush=True)
     return result["verdict"]
 
 
@@ -386,26 +477,42 @@ def review_one(endpoint, pr, master, ledger, c, providers, env, registries):
     head, number = pr["head"]["sha"], pr["number"]
     require(adoption.commit_sha(head), "pr_head")
     roll(ledger.state, utc_day())
-    if head in ledger.state["attempted"] or already_commented(endpoint, number, head):
+    if head in ledger.state["attempted"]:
+        print(f"PR #{number}: SKIPPED (already_reserved_today)", flush=True)
         return "SKIPPED"
+    with stage("candidate_comment_lookup", number):
+        if already_commented(endpoint, number, head):
+            print(f"PR #{number}: SKIPPED (existing_advisory)", flush=True)
+            return "SKIPPED"
     # Only the exact untouched, bot-generated candidate-only PR; never check out PR code.
-    current = adoption.get_pr(endpoint, number, head)
-    report, _, _ = adoption.get_candidate(endpoint, number, head, current)
+    with stage("candidate_pr_head_check", number):
+        current = adoption.get_pr(endpoint, number, head)
+    with stage("candidate_scope_check", number):
+        report, _, _ = adoption.get_candidate(endpoint, number, head, current)
     sources, targets, practices, generation, audit = registries
-    content, prompt = prepare(report, sources, targets, practices, generation, c)
+    with stage("candidate_evidence_check", number):
+        content, prompt = prepare(report, sources, targets, practices, generation, c)
     for row in providers:
         name = row["provider"]
         key = env[KEYS[name]]
         if ledger.state["day"] != utc_day():
             return "DEFER"
-        if name == "openrouter" and not openrouter_free(row["model"], key):
-            continue
-        if not reserve(ledger, head, name, c, utc_day):
+        if name == "openrouter":
+            with stage("free_catalog_check", number, row):
+                is_free = openrouter_free(row["model"], key)
+            if not is_free:
+                print(f"PR #{number} openrouter free_catalog_unconfirmed", flush=True)
+                continue
+        with stage("request_reservation", number, row):
+            reserved = reserve(ledger, head, name, c, utc_day)
+        if not reserved:
+            print(f"PR #{number} {name} reservation_unavailable", flush=True)
             continue
         try:
-            answer = call_model(row, key, prompt)
+            with stage("model_call", number, row):
+                answer = call_model(row, key, prompt)
         except HTTPError as exc:
-            print(f"PR #{number} {name} HTTP {exc.code}")
+            print(f"PR #{number} {name} {diagnostic(exc)}", flush=True)
             if exc.code in {401, 402, 403, 429}:
                 if name not in ledger.state["blocked"]:
                     ledger.state["blocked"].append(name)
@@ -413,16 +520,17 @@ def review_one(endpoint, pr, master, ledger, c, providers, env, registries):
             if exc.code in {401, 402, 403, 404, 408, 429, 500, 502, 503, 504}:
                 continue
             return "DEFER"
-        except (URLError, TimeoutError, OSError):
-            print(f"PR #{number} {name} transport_failure")
+        except (URLError, TimeoutError, OSError) as exc:
+            print(f"PR #{number} {name} transport_failure code={diagnostic(exc)}", flush=True)
             continue
-        except (InvalidAnswer, ValueError):
-            print(f"PR #{number} {name} invalid_response")
+        except (InvalidAnswer, ValueError) as exc:
+            print(f"PR #{number} {name} invalid_response code={diagnostic(exc)}", flush=True)
             return post_result(endpoint, number, head, master, report, invalid_result(report), row)
         try:
-            result = validate_answer(answer, report, sources, targets, practices, generation, audit, content)
-        except (ValueError, KeyError, TypeError, IndexError):
-            print(f"PR #{number} {name} invalid_advisory")
+            with stage("advisory_decision_validation", number, row):
+                result = validate_answer(answer, report, sources, targets, practices, generation, audit, content)
+        except (ValueError, KeyError, TypeError, IndexError) as exc:
+            print(f"PR #{number} {name} invalid_advisory code={diagnostic(exc)}", flush=True)
             result = invalid_result(report)
         # No second reviewer after a valid or unusable judgment.
         return post_result(endpoint, number, head, master, report, result, row)
@@ -464,8 +572,9 @@ def run(repo, master, env, event):
         require(adoption.current_ref(endpoint, "master") == master, "master_changed")
         try:
             result = review_one(endpoint, pr, master, ledger, c, providers, env, registries)
-        except (ValueError, KeyError, TypeError, IndexError, URLError, OSError):
-            print(f"PR #{pr['number']}: DEFER (candidate/evidence check unavailable)")
+        except (ValueError, KeyError, TypeError, IndexError, URLError, OSError) as exc:
+            print(f"PR #{pr['number']}: DEFER (candidate/evidence check unavailable) code={diagnostic(exc)}",
+                  flush=True)
             result = "DEFER"
         # GitHub state/write errors are not swallowed: stop on ambiguous persistence.
         if result != "SKIPPED":
@@ -479,6 +588,7 @@ if __name__ == "__main__":
     try:
         sys.exit(run(os.environ.get("GITHUB_REPOSITORY"), os.environ.get("GITHUB_SHA"),
                      os.environ, os.environ.get("GITHUB_EVENT_NAME")))
-    except (ValueError, KeyError, TypeError, IndexError, OSError, subprocess.SubprocessError, PersistenceError):
-        print("ADVISORY_STOPPED: configuration, identity or persistence check failed", file=sys.stderr)
+    except Exception as exc:
+        # Even an unexpected exception must not leak request data or a subprocess traceback.
+        print("ADVISORY_STOPPED: code=" + diagnostic(exc), file=sys.stderr, flush=True)
         sys.exit(1)

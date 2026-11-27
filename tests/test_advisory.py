@@ -1,4 +1,7 @@
 import copy
+from contextlib import redirect_stdout
+import io
+import subprocess
 import json
 from types import SimpleNamespace
 import unittest
@@ -136,6 +139,58 @@ class AdvisoryTests(unittest.TestCase):
             with self.assertRaises(a.PersistenceError):
                 a.post_result("repos/"+a.REPO, 4, self.head, self.master,
                               self.report, result, self.c["providers"][0])
+
+    def test_safe_diagnostics_never_emit_exception_payload(self):
+        secret = "SENSITIVE-API-KEY-AND-RESPONSE"
+        cases = [
+            (ValueError(secret), "validation_error"),
+            (a.InvalidAnswer("model_identity_mismatch"), "model_identity_mismatch"),
+            (a.InvalidAnswer(secret), "invalid_answer"),
+            (a.PersistenceError("comment_write_failed"), "comment_write_failed"),
+            (subprocess.CalledProcessError(1, ["gh", secret], stderr=secret + " (HTTP 403)"), "github_http_403"),
+            (subprocess.CalledProcessError(1, ["gh", secret], stderr=secret), "github_command_failed"),
+            (subprocess.TimeoutExpired(["gh", secret], 60), "github_timeout"),
+            (HTTPError("https://example.invalid/" + secret, 503, secret, None, None), "http_503"),
+            (RuntimeError(secret), "unexpected_error"),
+        ]
+        for exc, expected in cases:
+            with self.subTest(expected=expected):
+                self.assertEqual(a.diagnostic(exc), expected)
+                output = io.StringIO()
+                with redirect_stdout(output), self.assertRaises(type(exc)):
+                    with a.stage("test_stage", 4, self.c["providers"][0]):
+                        raise exc
+                log = output.getvalue()
+                self.assertIn("stage=test_stage pr=4 provider=nvidia", log)
+                self.assertIn("code=" + expected, log)
+                self.assertNotIn(secret, log)
+
+    def test_response_json_diagnostic_preserved(self):
+        row = self.c["providers"][0]
+        value = {"model": row["model"], "choices": [{"finish_reason": "stop", "message":
+                 {"content": "private invalid response"}}]}
+        with patch.object(a, "http_json", return_value=value), self.assertRaises(a.InvalidAnswer) as cm:
+            a.call_model(row, "fake", "fixture")
+        self.assertEqual(a.diagnostic(cm.exception), "response_json")
+
+    def test_publish_stage_distinguishes_github_failure(self):
+        result = self.validate(self.answer)
+        err = subprocess.CalledProcessError(1, ["gh", "SECRET"], stderr="private detail (HTTP 403)")
+        output = io.StringIO()
+        with redirect_stdout(output), patch.object(adoption, "current_ref", return_value=self.master), \
+                patch.object(adoption, "get_pr"), \
+                patch.object(a, "already_commented", return_value=False), \
+                patch.object(compass, "gh", side_effect=err):
+            with self.assertRaises(a.PersistenceError):
+                a.post_result("repos/"+a.REPO, 4, self.head, self.master,
+                              self.report, result, self.c["providers"][0])
+        log = output.getvalue()
+        self.assertIn("ok stage=publish_master_check", log)
+        self.assertIn("ok stage=publish_pr_head_check", log)
+        self.assertIn("failed stage=publish_comment_write", log)
+        self.assertIn("code=github_http_403", log)
+        self.assertNotIn("private detail", log)
+        self.assertNotIn("SECRET", log)
 
     def test_disabled_no_io(self):
         with patch.object(compass, "gh") as gh:

@@ -79,6 +79,19 @@ favorable verdict or retrying the same HEAD tomorrow. Transport failures
 without a result comment can be retried on a later day.
 GitHub write errors stop the run; inspect state before a manual retry.
 
+### Safe diagnostics (v0.9.1)
+
+Runtime logs identify the PR, allowlisted provider/model, stage and fixed
+diagnostic code. Stage start/ok/failure separates candidate checks, ledger
+reservation, HTTP connect/read, response parsing, semantic decision
+validation, master/PR HEAD checks, and comment lookup/write. GitHub CLI
+failures report a recognized numeric HTTP status or a generic command/
+timeout code; no raw stderr, exception message, API key, request, source
+text or model response is logged. A reserved request is not proof of
+successful inference. Unit-test mock logs are not live API observations.
+The existing ledger schema, quota, provider routing, and deduplication
+are unchanged. Do not reset the ledger to bypass same-day reservations.
+
 ## Evidence and output
 
 Validate proposal commit scope, exact source hash and evidence locators
