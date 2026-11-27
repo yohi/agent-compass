@@ -25,6 +25,7 @@ class MaintenanceTests(unittest.TestCase):
         self.assertEqual(b["superseded"], 1)
         self.assertEqual(b["origin"], "changed")
         b["stage"], b["comment"] = "ready", 12
+        b["proposal_identity"], b["next_cursor"], b["document_end"] = m.chunk_identity(b), 4, True
         self.assertIs(m.observe(s, self.source, "later", "2026-11-28"), b)
         self.assertEqual(m.read_state(m.state_body(s)), s)
 
@@ -42,6 +43,17 @@ class MaintenanceTests(unittest.TestCase):
             self.assertEqual(m.reserve(s, "analyze", c, lambda: None, now=lambda: 2000),
                              "gemini-3.8-flash")
             self.assertEqual(s["usage"]["gemini-3.8-flash"], 1)
+
+    def test_persistent_block_and_reset(self):
+        s = m.empty_state()
+        with patch.object(m, "pacific_day", return_value="2026-11-27"):
+            m.reserve(s, "analyze", self.c, lambda: None, now=lambda: 1000)
+            s["blocked"] = ["gemini-3.8-flash"]
+            self.assertIsNone(m.reserve(s, "analyze", self.c, lambda: None, now=lambda: 1020))
+        with patch.object(m, "pacific_day", return_value="2026-11-28"):
+            self.assertEqual(m.reserve(s, "analyze", self.c, lambda: None, now=lambda: 2000),
+                             "gemini-3.8-flash")
+            self.assertEqual(s["blocked"], [])
 
     def test_reservation_failure_prevents_call(self):
         with patch.object(m, "pacific_day", return_value="2026-11-27"):
@@ -71,10 +83,20 @@ class MaintenanceTests(unittest.TestCase):
     def test_partial_input_and_schema(self):
         text = "public guidance " * 20000
         row = m.observe(m.empty_state(), self.source, text, "2026-11-27")
-        prompt, excerpt, truncated = m.make_prompt(self.source, text, row, self.practices, self.c, False)
+        prompt, excerpt, truncated, end = m.make_prompt(self.source, text, row, self.practices, self.c, False)
         self.assertTrue(truncated)
         self.assertLess(len(prompt.encode()), 20000)
         self.assertTrue(text.startswith(excerpt))
+        self.assertEqual(text[:end], excerpt)
+        self.assertEqual(m.make_prompt(self.source, text, row, self.practices, self.c, True)[1], excerpt)
+        first_identity = m.chunk_identity(row)
+        m.finish_chunk(row, "no_proposal", end, False)
+        self.assertEqual(row["stage"], "classify")
+        self.assertNotEqual(first_identity, m.chunk_identity(row))
+        _, excerpt2, partial2, end2 = m.make_prompt(self.source, text, row, self.practices, self.c, False)
+        self.assertTrue(partial2)
+        self.assertEqual(text[end:end2], excerpt2)
+        self.assertGreater(end2, end)
         with self.assertRaises(ValueError):
             m.classify({"decision": "invented", "reason": "test"})
         raw = json.dumps({"candidates": [{"finishReason": "STOP", "content": {"parts": [

@@ -63,7 +63,7 @@ def pacific_day():
 
 
 def empty_state():
-    return {"day": "", "usage": {}, "last_request": 0, "sources": {}}
+    return {"day": "", "usage": {}, "last_request": 0, "sources": {}, "blocked": []}
 
 
 def state_body(state):
@@ -79,12 +79,16 @@ def state_body(state):
 
 
 def validate_state(state):
-    require(isinstance(state, dict) and set(state) == {"day", "usage", "last_request", "sources"},
+    require(isinstance(state, dict) and set(state) <= {"day", "usage", "last_request", "sources", "blocked"}
+            and {"day", "usage", "last_request", "sources"} <= set(state),
             "invalid ledger shape")
     require(state["day"] == "" or re.fullmatch(r"\d{4}-\d{2}-\d{2}", state["day"]), "ledger day")
     require(type(state["last_request"]) is int and state["last_request"] >= 0, "ledger time")
     require(isinstance(state["usage"], dict) and all(k in CAPS and type(v) is int and 0 <= v <= CAPS[k]
             for k, v in state["usage"].items()), "ledger usage")
+    state.setdefault("blocked", [])
+    require(isinstance(state["blocked"], list) and len(state["blocked"]) == len(set(state["blocked"]))
+            and set(state["blocked"]) <= (set(CAPS) | {"all"}), "ledger blocked models")
     require(isinstance(state["sources"], dict) and len(state["sources"]) <= 200, "ledger sources")
     for key, r in state["sources"].items():
         require(compass.ID.fullmatch(key) and isinstance(r, dict), "ledger source")
@@ -93,7 +97,8 @@ def validate_state(state):
                 and isinstance(r["first_seen"], str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", r["first_seen"])
                 and type(r["superseded"]) is int and r["superseded"] >= 0, "ledger record")
         require(set(r) <= {"identity", "fingerprint", "stage", "origin", "first_seen",
-                          "superseded", "comment", "pr", "result", "attempt_day", "attempt_role"},
+                          "superseded", "comment", "pr", "result", "attempt_day", "attempt_role",
+                          "cursor", "next_cursor", "document_end", "pr_count", "proposal_identity"},
                 "unknown ledger field")
         for field in ("comment", "pr"):
             require(field not in r or type(r[field]) is int and r[field] > 0, "ledger reference")
@@ -103,7 +108,12 @@ def validate_state(state):
                 "ledger attempt")
         require("attempt_day" not in r or re.fullmatch(r"\d{4}-\d{2}-\d{2}", r["attempt_day"]),
                 "ledger attempt day")
-        require(r["stage"] != "ready" or "comment" in r, "missing durable proposal")
+        for field in ("cursor", "next_cursor", "pr_count"):
+            require(field not in r or type(r[field]) is int and r[field] >= 0, "invalid chunk cursor")
+        require("document_end" not in r or type(r["document_end"]) is bool, "invalid end marker")
+        require("proposal_identity" not in r or SHA.fullmatch(r["proposal_identity"]), "invalid proposal identity")
+        require(r["stage"] != "ready" or ("comment" in r and "proposal_identity" in r
+                and "next_cursor" in r and "document_end" in r), "missing durable proposal")
     return state
 
 
@@ -124,7 +134,7 @@ def observe(state, source, content, day):
     if old and (old["identity"] == ident or old["stage"] == "ready"):
         return old
     r = {"identity": ident, "fingerprint": fp, "stage": "classify",
-         "origin": "changed" if old else "initial", "first_seen": day,
+         "origin": "changed" if old else "initial", "first_seen": day, "cursor": 0, "pr_count": 0,
          "superseded": (old["superseded"] + int(old["stage"] != "done")) if old else 0}
     state["sources"][source["id"]] = r
     return r
@@ -135,10 +145,11 @@ def reserve(state, role, c, save, now=time.time, sleep=time.sleep):
     day = pacific_day()
     if state["day"] != day:
         require(not state["day"] or state["day"] < day, "clock moved backwards")
-        state["day"], state["usage"] = day, {}
+        state["day"], state["usage"], state["blocked"] = day, {}, []
     row = c["models"][role]
     model = row["id"]
-    if state["usage"].get(model, 0) >= row["daily_limit"]:
+    if ("all" in state.get("blocked", []) or model in state.get("blocked", [])
+            or state["usage"].get(model, 0) >= row["daily_limit"]):
         return None
     gap = c["min_interval_seconds"] - (now() - state["last_request"])
     if gap > 0:
@@ -230,7 +241,7 @@ def make_prompt(source, content, row, practices, c, classification):
     context = {"source_id": source["id"], "source_url": source["url"], "target": source["target"],
                "origin": row["origin"], "linked_practices": list(related.values()),
                "source_sha256": row["fingerprint"]}
-    instruction = ("Classify whether the current official source warrants a registry change. "
+    instruction = ("Classify whether the supplied current-source excerpt warrants a registry change. "
                    "Use no_action ONLY when the supplied evidence is sufficient and no relevant update is found; "
                    "choose complex for uncertain/complex changes." if classification else
                    "Propose at most three concrete scoped registry edits, or an empty array if none warranted. "
@@ -244,13 +255,22 @@ def make_prompt(source, content, row, practices, c, classification):
     # Reserve overhead for JSON serialization, schema and system text. Conservative bytes <20k
     # by limiting actual prompt payload to 18k bytes (UTF-8 token counts are not exact).
     max_bytes = min(18000, c["max_input_bytes"] // 2)
-    available = max_bytes - len(prefix.encode())
+    available = max_bytes - len(json.dumps(context, ensure_ascii=False).encode()) - 1800
     require(available >= 1000, "linked context too large")
-    raw = content.encode()
-    truncated = len(raw) > available
-    excerpt = raw[:available].decode("utf-8", errors="ignore")
-    prompt = prefix + excerpt + ("\n[TRUNCATED: partial current source; uncertainty required]" if truncated else "")
-    return prompt, excerpt, truncated
+    cursor = row.get("cursor", 0)
+    require(cursor < len(content), "source cursor outside content")
+    remaining = content[cursor:]
+    excerpt = remaining.encode()[:available].decode("utf-8", errors="ignore")
+    # Prefer line boundaries, while allowing a single unusually long line to progress.
+    if len(excerpt) < len(remaining):
+        boundary = excerpt.rfind("\n")
+        if boundary > len(excerpt) // 2:
+            excerpt = excerpt[:boundary + 1]
+    require(bool(excerpt), "empty source chunk")
+    next_cursor = cursor + len(excerpt)
+    partial = cursor > 0 or next_cursor < len(content)
+    prompt = prefix + excerpt + ("\n[PARTIAL SOURCE: evaluate only this excerpt; uncertainty required]" if partial else "")
+    return prompt, excerpt, partial, next_cursor
 
 
 def validate_proposals(value, source, row, practices, excerpt, c, model, truncated):
@@ -284,12 +304,29 @@ def validate_proposals(value, source, row, practices, excerpt, c, model, truncat
                        local_eval="not_verified", evidence=[source["id"]])
         proposals.append({"action": action, "practice_id": pid, "proposed": changes,
                           "existing_record_sha256": compass.digest(json.dumps(old, sort_keys=True, ensure_ascii=False)) if old else None,
-                          "evidence_locator": {"normalized_line": excerpt[:start].count("\n") + 1,
-                                               "quote_sha256": compass.digest(quote), "quote_length": len(quote)}})
+                          "evidence_locator": {"chunk_normalized_line": excerpt[:start].count("\n") + 1,
+                                               "quote_sha256": compass.digest(quote), "quote_length": len(quote),
+                                               "chunk_char_offset": start}})
     return {"schema_version": 1, "adoption_status": "UNADOPTED", "source_id": source["id"],
-            "source_url": source["url"], "identity": row["identity"], "source_sha256": row["fingerprint"],
+            "source_url": source["url"], "identity": chunk_identity(row), "snapshot_identity": row["identity"],
+            "source_sha256": row["fingerprint"], "chunk_cursor": row.get("cursor", 0),
             "origin": row["origin"], "model": model, "partial_source": truncated,
             "prior_source_text": "NOT_AVAILABLE", "proposals": proposals}
+
+
+def chunk_identity(row):
+    return compass.digest(row["identity"] + "\0" + str(row.get("cursor", 0)))
+
+
+def finish_chunk(row, result, next_cursor, document_end):
+    require(next_cursor > row.get("cursor", 0), "non-progressing source chunk")
+    if result == "pr_created":
+        row["pr_count"] = row.get("pr_count", 0) + 1
+    row["cursor"] = next_cursor
+    row["stage"] = "done" if document_end else "classify"
+    row["result"] = result
+    for key in ("comment", "proposal_identity", "next_cursor", "document_end"):
+        row.pop(key, None)
 
 
 def gh_optional(*args):
@@ -329,14 +366,16 @@ class Ledger:
 
     def load_archive(self, row, source):
         comment = compass.gh(f"{self.endpoint}/comments/{row['comment']}")
-        prefix = f"Unadopted candidate archive: {source['id']} / {row['identity']}\n\n"
+        prefix = f"Unadopted candidate archive: {source['id']} / {row['proposal_identity']}\n\n"
         require(comment["user"]["login"] == "github-actions[bot]" and
                 comment["issue_url"].endswith(f"/issues/{self.number}") and
                 comment["body"].startswith(prefix), "invalid archive identity")
         report = json.loads(base64.b64decode(comment["body"][len(prefix):], validate=True))
-        require(report["identity"] == row["identity"] and report["source_id"] == source["id"] and
+        require(report["identity"] == row["proposal_identity"] == chunk_identity(row)
+                and report["snapshot_identity"] == row["identity"] and report["source_id"] == source["id"] and
                 report["source_sha256"] == row["fingerprint"] and report["adoption_status"] == "UNADOPTED",
                 "invalid archived proposal")
+        require(COMMIT.fullmatch(report["base_commit"]), "invalid archived base commit")
         return report
 
 
@@ -393,8 +432,8 @@ def run(repo, commit, key, enabled):
         if row["stage"] == "ready":
             require(sid in sources, "pending proposal source removed")
             report = ledger.load_archive(row, sources[sid])
-            row["pr"] = publish(repo, report, commit)
-            row["stage"], row["result"] = "done", "pr_created"
+            row["pr"] = publish(repo, report, report["base_commit"])
+            finish_chunk(row, "pr_created", row["next_cursor"], row["document_end"])
             ledger.save()
     observed = {}
     for sid, source in sources.items():
@@ -418,8 +457,9 @@ def run(repo, commit, key, enabled):
                 break  # failed/interrupted attempt: retry only on a later day
             if role in blocked:
                 break
-            prompt, excerpt, truncated = make_prompt(source, observed[sid], row, practices, c, role == "classify")
-            # Do not let a partial source be marked no_action by the lightweight classifier.
+            prompt, excerpt, truncated, next_cursor = make_prompt(source, observed[sid], row, practices, c,
+                                                                   role == "classify")
+            document_end = next_cursor == len(observed[sid])
             row["attempt_day"], row["attempt_role"] = pacific_day(), role
             model = reserve(state, role, c, ledger.save)
             if model is None:
@@ -432,10 +472,11 @@ def run(repo, commit, key, enabled):
                 result = call_model(model, key, prompt, CLASS_SCHEMA if role == "classify" else ANALYSIS_SCHEMA, c)
                 if role == "classify":
                     decision = classify(result)
-                    row["stage"] = ("done" if decision == "no_action" and not truncated else
-                                    "complex" if decision == "complex" or truncated else "analyze")
-                    if row["stage"] == "done":
-                        row["result"] = "model_no_action"
+                    if decision == "no_action":
+                        finish_chunk(row, "model_no_action", next_cursor, document_end)
+                        ledger.save()
+                        break
+                    row["stage"] = "complex" if decision == "complex" else "analyze"
                     ledger.save()
                     continue
                 report = validate_proposals(result, source, row, practices, excerpt, c, model, truncated)
@@ -443,6 +484,13 @@ def run(repo, commit, key, enabled):
                 print(f"Model attempt failed: {role} http_{exc.code}")
                 failure = True
                 blocked.add(role)
+                if exc.code in {401, 403, 429}:
+                    block = "all" if exc.code in {401, 403} else model
+                    if block not in state["blocked"]:
+                        state["blocked"].append(block)
+                    ledger.save()
+                    if block == "all":
+                        return 1
                 # No retry or fallback on quota/auth errors. Alternate only on explicit model
                 # unavailable/service error; independent cap and a later run.
                 if role == "analyze" and exc.code in {404, 503}:
@@ -454,17 +502,16 @@ def run(repo, commit, key, enabled):
                 failure = True
                 break
             if report["proposals"]:
+                report["base_commit"] = commit
                 row["comment"] = ledger.archive(report)
+                row["proposal_identity"] = report["identity"]
+                row["next_cursor"], row["document_end"] = next_cursor, document_end
                 row["stage"] = "ready"
                 ledger.save()
                 row["pr"] = publish(repo, report, commit)
-                row["stage"], row["result"] = "done", "pr_created"
-            elif not truncated:
-                row["stage"], row["result"] = "done", "no_proposal"
+                finish_chunk(row, "pr_created", next_cursor, document_end)
             else:
-                # Partial document with no supported proposal stays pending, not a negative conclusion.
-                print(f"Partial-source coverage unresolved: {sid}")
-                failure = True
+                finish_chunk(row, "no_proposal", next_cursor, document_end)
             ledger.save()
             break
     print("Maintenance reserved attempts:", json.dumps(state["usage"], sort_keys=True))

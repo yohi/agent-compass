@@ -30,10 +30,11 @@ source and linked registry records. Latest pending snapshots coalesce;
 superseded pending counts are explicit, not a complete historical diff.
 Source data is held only in memory. Input excerpts are bounded by bytes,
 not an exact token count; the prompt is capped near 18 KB plus request
-overhead. Long sources may be incomplete. A partial-source no-proposal result
-stays pending. This initial implementation does not traverse the entire
-tail of oversized sources; owner can narrow the registered source or inspect
-manually. Model classifications are not proof of relevance or absence.
+overhead. Long sources are traversed in bounded chunks (at most one completed chunk
+per source per run); a persisted character cursor advances even if a chunk
+has no proposal. A changed snapshot resets the cursor and counts supersession.
+Chunk boundaries can omit cross-boundary context; model classifications are
+not proof of relevance or absence.
 
 Roles and per-Pacific-day reserved attempts:
 - gemini-3.5-flash-lite: 50 (classification)
@@ -43,7 +44,8 @@ Roles and per-Pacific-day reserved attempts:
 
 The ledger persists reservation before each request, including failure and
 interruption. At least 15 seconds between requests, serialized; no immediate
-retries. Quota or authentication failures block the role for the current run.
+retries. Quota failures persistently block the model until the next Pacific day;
+authentication failures block all model calls for the same period.
 The code only allows these explicitly listed model IDs and caps, no paid
 fallback, grounding, tools, external callbacks or alternate providers.
 Free-tier eligibility and project-wide shared usage are not programmatically
@@ -52,7 +54,7 @@ re-analysis; reservations still count. Keep the ledger intact.
 
 Structured output is validated locally for action, exact target, linked
 practice, status, bounded text, evidence quote matching and identity.
-An excerpt hash and normalized line locator replace the source quote in
+An excerpt hash, chunk cursor and within-chunk line/character locator replace the source quote in
 the archive. This checks literal evidence presence, not semantic entailment.
 No source body, prompt, key or raw response is persisted or logged.
 
@@ -63,7 +65,7 @@ it ready. If PR publication fails, retry publication without invoking the model.
 The branch is compass-proposals/<identity>; the only added file is
 proposals/<source>/<identity>.json. It contains concrete candidate field values,
 current practice digest, source URL/hash and evidence locator.
-PRs are draft, one per observed source identity, never auto-approved or merged.
+PRs are draft, one per source snapshot/chunk identity, never auto-approved or merged.
 An existing PR (including closed) is treated as owner disposition.
 **Merging a proposal record does not adopt the guidance.** Owner verifies
 the official evidence and applies selected changes to the canonical registry,
