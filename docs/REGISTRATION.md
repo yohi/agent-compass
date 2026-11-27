@@ -53,7 +53,8 @@ must have permission to create PRs.
 
 After manual merge, the existing monitor and Gemini maintenance inventory
 the registered source and generate practice candidates. Adopt supported
-practices using Prepare knowledge adoption. There is no second API key,
+practices using Prepare knowledge adoption or the separately enabled
+controlled-adoption policy (AUTO_ADOPTION.md). Registration itself remains manual. There is no second API key,
 ledger or quota path. Deliberately do not invoke Gemini before registration:
 the owner establishes source identity/scope first, then existing maintenance
 handles semantic extraction. New lifecycle changes require another

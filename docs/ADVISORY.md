@@ -1,6 +1,6 @@
 # Independent adoption advisory / 独立採択判断
 
-Optional Phase 9. Public candidate-only PRs produced by Gemini maintenance
+Optional independent advisory introduced in v0.9.0. Public candidate-only PRs produced by Gemini maintenance
 are checked against the current official source and canonical registry,
 then evaluated by one non-Gemini model. Advice is a PR comment, not
 approval, adoption or merge. No changes to the existing maintenance ledger,
@@ -103,7 +103,7 @@ the normal first-attempt path. Do not use Re-run jobs of an older revision.
 
 ### Safe diagnostics (v0.9.1)
 
-Runtime logs identify the PR, allowlisted provider/model, stage and fixed
+Runtime logs identify the PR, validated provider/model ID, stage and fixed
 diagnostic code. Stage start/ok/failure separates candidate checks, ledger
 reservation, HTTP connect/read, response parsing, semantic decision
 validation, master/PR HEAD checks, and comment lookup/write. GitHub CLI
@@ -130,11 +130,13 @@ model-generated reasons are correct or that they never quote source text.
 ADOPT means all candidate items recommended; PARTIAL_ADOPT means only some;
 REJECT means all rejected; DEFER means none accepted and at least one
 uncertain. The existing adoption planner validates suggested decision JSON
-without writing files. Owner still reviews evidence, exact scope, status
-and placement before using Prepare knowledge adoption. Literal evidence
-checks cannot prove semantic correctness. An advice comment may be stale
-after master/source changes; adoption rechecks current evidence and records.
-No independent follow-up review is automatically started after a judgment.
+without writing files. The Owner reviews evidence, scope, status and placement for manual adoption.
+Alternatively, [controlled auto adoption](AUTO_ADOPTION.md) may consume all-item
+ADOPT advice under the explicit conservative/assisted policy. Advisory itself
+never edits or merges the PR. Literal checks cannot prove semantic correctness.
+Advice may become stale after registry/source changes; adoption rechecks
+evidence and records. No repeated independent LLM review is started merely
+because the registry changes.
 
 ## Boundaries and tests
 
@@ -144,3 +146,10 @@ model, not ChatGPT. Tests use synthetic fixtures and mocked API calls;
 real account access, model response format, semantic accuracy and comment
 permissions require one actual authorized run. A free model's existence
 in a catalog is not proof of access from a particular account.
+
+## Live evidence (2026-11-27)
+
+[Run 45957878164](https://github.com/yohi/agent-compass/actions/runs/45957878164)
+validated the actual NVIDIA Kimi K3.1 Pro response and published the [ADOPT
+comment on PR #4](https://github.com/yohi/agent-compass/pull/4#issuecomment-7212421589).
+OpenRouter/Groq inference and fallback remain unverified in these runs.

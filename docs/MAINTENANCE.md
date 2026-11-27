@@ -37,7 +37,7 @@ has no proposal. A changed snapshot resets the cursor and counts supersession.
 Chunk boundaries can omit cross-boundary context; model classifications are
 not proof of relevance or absence.
 
-Roles and per-Pacific-day reserved attempts:
+Default models and per-Pacific-day reserved attempts (overridable IDs below):
 - gemini-3.5-flash-lite: 50 (classification)
 - gemini-3.8-flash: 10 (analysis)
 - gemini-4-hydrogen: 5 (complex)
@@ -50,8 +50,11 @@ a new durable reservation is available. A second 503 stops the role for that
 run. No retry for authentication, quota, validation or other errors. Quota
 failures persistently block the model until the next Pacific day;
 authentication failures block all model calls for the same period.
-The code only allows these explicitly listed model IDs and caps, no paid
-fallback, grounding, tools, external callbacks or alternate providers.
+Configured Gemini IDs must satisfy the model-ID syntax; known model caps and
+role limits apply, and previously unknown IDs are capped at five attempts per
+Pacific day. Combined daily reservations cannot exceed 70, including earlier
+model selections. No paid fallback, grounding, tools, external callbacks or
+alternate providers.
 Free-tier eligibility and project-wide shared usage are not programmatically
 verified. A crash between API success and archive can require a later
 re-analysis; reservations still count. Keep the ledger intact.
@@ -75,12 +78,14 @@ it ready. If PR publication fails, retry publication without invoking the model.
 The branch is compass-proposals/<identity>; the only added file is
 proposals/<source>/<identity>.json. It contains concrete candidate field values,
 current practice digest, source URL/hash and evidence locator.
-PRs are draft, one per source snapshot/chunk identity, never auto-approved or merged.
-An existing PR (including closed) is treated as owner disposition.
-**Merging a proposal record does not adopt the guidance.** Owner verifies
-the official evidence and selects candidate items, statuses and placements in
-[Prepare knowledge adoption](ADOPTION.md); the owner-only workflow prepares
-the actual registry diff, regenerates docs and tests on the same candidate PR.
+Maintenance creates draft PRs, one per source snapshot/chunk identity; it
+never approves or merges them. An existing PR (including closed) is treated as
+a disposition for publication deduplication.
+**Merging an untouched proposal record does not adopt the guidance.**
+The actual registry diff is prepared on the same candidate PR either by
+[Owner-selected adoption](ADOPTION.md) or [controlled auto adoption](AUTO_ADOPTION.md)
+under explicit policy, using existing independent advice. The latter may merge
+only after its own trusted validation and GitHub merge checks.
 This is deliberately separated from executing model-supplied patches.
 No new model/source is automatically registered. The model cannot choose
 paths, branch names, API tools, permissions or commands.
@@ -103,5 +108,7 @@ Set `GEMINI_CLASSIFY_MODEL`, `GEMINI_ANALYZE_MODEL`, `GEMINI_COMPLEX_MODEL`, or
 `GEMINI_ALTERNATE_MODEL` in repository Actions Variables to override the
 corresponding default. Confirm free-tier availability before changing IDs.
 Known model caps remain in force, new IDs are limited to five attempts per
-UTC-Pacific quota day, and the combined cap remains 70/day. Historical
+Pacific calendar day, and the combined cap remains 70/day. Historical
 reservations are preserved across model switches. No paid fallback.
+
+The live Gemini candidate-creation path was exercised in [run 45948192774](https://github.com/yohi/agent-compass/actions/runs/45948192774): PR #4 was created despite other source/model errors. This is partial-run evidence, not a claim that all sources were processed.

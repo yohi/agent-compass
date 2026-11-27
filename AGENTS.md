@@ -14,7 +14,7 @@ See README.md for the operating model and registry/ for canonical data.
 - Keep model, family, harness and shared scopes distinct.
 - Do not invent evidence, latest-model status or local evaluation results.
 - Preserve last successful observations on fetch failure; no false unchanged status.
-- No automatic adoption of source changes, raw document redistribution, or paid APIs.
+- Never adopt source changes merely because their fingerprints changed. Only the explicit owner-selected or controlled-adoption policy may adopt guidance. No raw document redistribution or paid APIs.
 - Discovery links and model mentions are candidates, not verified recommendations.
 - Topic changes are lexical hints; never claim semantic changes or deprecation without evidence.
 - Generator output is a proposal; never auto-install it or overwrite an existing file.

@@ -1,8 +1,9 @@
 # Public knowledge portal / 公開ナレッジポータル
 
 The static site is built from the canonical registry and published by
-[pages.yml](../.github/workflows/pages.yml) on master pushes or manual dispatch.
-No external CDN, analytics, paid API or backend. The planned public URL is
+[pages.yml](../.github/workflows/pages.yml) on master pushes or explicit
+workflow dispatch, including dispatch by controlled auto adoption after a
+verified merge. No external CDN, analytics, paid API or backend. Public URL:
 https://yohi.github.io/agent-compass/ (availability depends on Pages configuration).
 
 ## Initial setup
@@ -56,9 +57,37 @@ portable Agent Skill. See [agent interface](AGENT_INTERFACE.md). No separate dat
 Only allowlisted web assets, validated registry data and generated public
 bundles are published. Deployment uses separate build and deploy jobs,
 least-privilege token scopes and SHA-pinned official actions. No issue state,
-private inputs or model transcripts are packaged. The site automatically
-rebuilds on master changes; source-monitor changes remain pending until a
-curator adopts them.
+private inputs or model transcripts are packaged. Ordinary master pushes
+trigger a rebuild; auto adoption uses explicit dispatch because a GITHUB_TOKEN
+merge does not reliably trigger push workflows. Source-monitor changes do not
+themselves update the published registry: manual or policy-bounded adoption
+is required.
+
+## Deployment verification and recovery
+
+A successful dispatch does not mean a successful deployment. Check the build
+and deploy jobs, then [Verify public portal](../.github/workflows/portal-health.yml).
+The health workflow has daily, deployment-completion and manual triggers.
+Do not assume a chained workflow actually ran: verify its run record. A
+deployment-triggered health run compares the exact deployment manifest; a
+scheduled/manual run checks the consistency of the served snapshot, not
+necessarily current master. For exact manual comparison, build the intended
+commit locally and run:
+
+~~~sh
+python build_site.py --output _site
+python check_portal.py --expected-manifest _site/api/v1/manifest.json
+~~~
+
+If publication fails after a successful merge, rerun only Publish knowledge
+portal on master (e.g. gh workflow run pages.yml --ref master). Never repeat
+adoption or LLM inference solely to republish. Existing Pages environment
+approval rules still apply.
+
+The first live controlled adoption dispatched [successful build/deploy
+45964910305](https://github.com/yohi/agent-compass/actions/runs/45964910305)
+for master fd9c0a4. An exact post-deployment HTTP check for that particular
+snapshot has not been established by the cited run evidence.
 
 日本語: 初回のみSettings → PagesでGitHub Actionsを選択する必要がある。
 ブラウザ版Auditorは軽量版で、CLIと同等の検出範囲を保証しない。

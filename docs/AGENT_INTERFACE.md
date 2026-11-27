@@ -36,7 +36,10 @@ should reject unknown schema versions and retry if snapshot IDs or byte
 digests mismatch during publication. The manifest's files map excludes the
 manifest itself; generator bundle digests are in generator.json. No live
 monitor state, private inputs, secrets or raw third-party documents are
-exported. Source change discovery does not automatically adopt recommendations.
+exported. Source change discovery does not itself adopt recommendations.
+Only canonical registry changes, after Owner-selected or policy-bounded
+adoption and publication, appear in these exports. A published recommendation
+does not imply local evaluation or permission to apply it.
 
 ## Skill
 

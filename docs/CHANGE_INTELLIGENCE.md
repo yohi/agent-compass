@@ -1,6 +1,6 @@
 # Change intelligence / 変更分析・新規情報源の発見
 
-Phase 2 P0: no paid API and no automatic registry adoption.
+Monitor/discovery (introduced in Phase 2): no paid API and no registry adoption by these workflows.
 
 ## Daily operation
 
@@ -55,13 +55,17 @@ capacity fails before state replacement. Both state issues are operational
 metadata; do not edit or delete their markers. If capacity is reached, explicitly
 migrate the state representation rather than silently discarding history.
 
-## Adoption (human decision)
+## Adoption (separate workflow)
 
 Read source, verify publisher, target version and applicable scope. If useful,
 edit the canonical JSON records, regenerate docs, validate, and commit via
 the normal approved workflow. No LLM-generated recommendations, automatic
 commits, PR creation or new model registration occur during monitoring.
+Separate maintenance can generate candidate PRs; the explicit
+[controlled-adoption policy](AUTO_ADOPTION.md) can adopt eligible new guidance.
+Discovery registration itself remains Owner-selected.
 
 日本語要約: 公式索引のリンク・モデル名候補を検出し、既存推奨事項の根拠変更を
 分類する。単語に基づく推定であり、意味的な変更や廃止を確定するものではない。
-初回発見は新規公開を意味しない。採択は根拠確認後にHuman Ownerが判断する。
+初回発見は新規公開を意味しない。監視処理は採択を行わない。
+採択はOwnerの判断、または明示的に許可された限定自動採択ポリシーに従う。

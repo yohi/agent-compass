@@ -3,7 +3,9 @@
 ## Scope and workflow
 
 Phase 3 P0 first curated batch, 2026-11-27: 35 monitored sources, 31 targets,
-52 practice records. The input is the [discovery archive](https://github.com/yohi/agent-compass/issues/2)
+52 practice records. After the first live controlled adoption (2026-11-27,
+fd9c0a4), the snapshot contains 54 practices with BP-053/BP-054 added as
+conditional Qwen3 runtime guidance. The input for the initial batch is the [discovery archive](https://github.com/yohi/agent-compass/issues/2)
 (497 indexed candidate entries; duplicates across indexes are possible) and targeted
 official-source checks. The batch prioritizes persistent instructions, model effort,
 completion boundaries, verification, tool-state handling, and migration.
@@ -20,7 +22,9 @@ completion boundaries, verification, tool-state handling, and migration.
    For generator inclusion, explicitly classify the practice in registry/generation.json;
    unclassified practices remain evidence-only.
 6. Regenerate docs and run the existing validation suite. Commit only the approved
-   batch. No automatic adoption or changes to consuming repositories.
+   batch. This is the manual curation path. The separate
+[controlled-adoption policy](AUTO_ADOPTION.md) permits only bounded additive
+updates when explicitly enabled; neither path changes consuming repositories.
 
 ## Practical selection
 

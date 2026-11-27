@@ -2,6 +2,9 @@
 
 ## 0.10.3 — 2026-11-27
 
+- Live milestone: PR #4 recovered, validated (125 Python tests), merged as fd9c0a4 and deployed through explicit Pages dispatch; BP-053/BP-054 added as conditional configuration guidance. See docs/AUTO_ADOPTION.md for evidence and outstanding operational checks.
+- Align README and operator/consumer documentation with the implemented adoption modes, model Variables, recovery, safety boundaries and live evidence. Documentation-only follow-up; no runtime version change.
+
 - Replace stale PR base SHA dependency with exact live Git refs and immutable conflict-free three-way merge tree verification. Preserve ordinary GitHub merge rules and post-merge parent/tree validation.
 
 ## 0.10.2 — 2026-11-27

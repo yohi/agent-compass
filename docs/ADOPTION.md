@@ -1,7 +1,10 @@
 # Knowledge adoption / 知識の採択
 
-Phase 7.1: prepare the actual registry diff on an existing candidate PR.
-No new LLM request, separate review PR, auto-approval or auto-merge.
+This document describes the manual, Owner-selected path introduced in v0.7.0.
+It prepares the actual registry diff on an existing candidate PR, without
+new LLM requests, separate review PRs, auto-approval or auto-merge.
+For optional low-risk automatic adoption, see [Controlled auto adoption](AUTO_ADOPTION.md).
+Use the manual path for all changes outside that policy.
 
 ## Owner workflow
 
@@ -22,8 +25,9 @@ No new LLM request, separate review PR, auto-approval or auto-merge.
    preserving the candidate JSON and adding an adoption receipt plus the
    actual registry diff. Inspect that diff, mark ready and merge normally
    if accepted. No write to master is performed by this workflow.
-   A GITHUB_TOKEN-generated commit may not trigger additional Actions;
-   this workflow runs the tests before updating the branch.
+   A GITHUB_TOKEN-generated commit may suppress push workflows or leave a
+   PR workflow awaiting approval; this workflow runs the tests before updating
+   the branch. Existing GitHub rules still apply.
 
 Example decision for a verified runtime configuration recommendation:
 ```json
