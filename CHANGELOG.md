@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.0 — 2026-11-27
+
+- Owner-only adoption workflow: select candidate indices/statuses/placements, verify exact source and existing records, prepare validated registry diff on the same draft PR with receipt. No automatic merge.
+
 ## 0.6.1 — 2026-11-27
 
 - Safe response/validation diagnostics with source and chunk context; constrain proposal category enum.

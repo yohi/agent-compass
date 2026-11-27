@@ -13,6 +13,7 @@ AIコーディングエージェント・LLMの公式推奨事項を継続管理
 - [Public knowledge portal and Pages setup](docs/PORTAL.md)
 - [Agent-ready interface and Skill](docs/AGENT_INTERFACE.md)
 - [Free-tier knowledge maintenance and portal health](docs/MAINTENANCE.md)
+- [Owner-selected knowledge adoption](docs/ADOPTION.md)
 - [Monitor workflow](.github/workflows/monitor.yml) / [monitor state and notifications](../../issues)
 
 ## Web portal
@@ -86,8 +87,9 @@ notifications are possible if publishing is interrupted. Workflow concurrency
 serializes runs. No automatic practice adoption, code execution from fetched
 content, repository settings changes, or changes to other repositories.
 
-To adopt guidance: edit registry records with scoped evidence, regenerate docs,
-run tests, and use the normal human-approved Git workflow. Do not confuse
+To adopt a generated proposal: use [Prepare knowledge adoption](docs/ADOPTION.md)
+with explicit owner-selected items, exact PR HEAD and placements; then merge the
+prepared PR normally. Manual scoped registry edits remain supported. Do not confuse
 provider guidance, project policy, and local evaluation. Topic hints are lexical,
 not LLM-based semantic analysis. They are not evidence of a changed recommendation.
 

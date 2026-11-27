@@ -77,8 +77,9 @@ current practice digest, source URL/hash and evidence locator.
 PRs are draft, one per source snapshot/chunk identity, never auto-approved or merged.
 An existing PR (including closed) is treated as owner disposition.
 **Merging a proposal record does not adopt the guidance.** Owner verifies
-the official evidence and applies selected changes to the canonical registry,
-updates/removes stale generation placements, regenerates docs and tests.
+the official evidence and selects candidate items, statuses and placements in
+[Prepare knowledge adoption](ADOPTION.md); the owner-only workflow prepares
+the actual registry diff, regenerates docs and tests on the same candidate PR.
 This is deliberately separated from executing model-supplied patches.
 No new model/source is automatically registered. The model cannot choose
 paths, branch names, API tools, permissions or commands.
