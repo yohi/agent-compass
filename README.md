@@ -14,6 +14,8 @@ AIコーディングエージェント・LLMの公式推奨事項を継続管理
 - [Agent-ready interface and Skill](docs/AGENT_INTERFACE.md)
 - [Free-tier knowledge maintenance and portal health](docs/MAINTENANCE.md)
 - [Owner-selected knowledge adoption](docs/ADOPTION.md)
+- [Discovery registration and lifecycle](docs/REGISTRATION.md)
+- [APM skill distribution](docs/APM.md)
 - [Monitor workflow](.github/workflows/monitor.yml) / [monitor state and notifications](../../issues)
 
 ## Web portal
@@ -29,6 +31,17 @@ lightweight audit. See [Pages setup](docs/PORTAL.md).
 - [Portable Agent Skill](skills/agent-compass/SKILL.md)
 
 Read only exact scoped guidance; do not assume model compatibility or override project rules.
+
+## Install the portable skill with APM
+
+From an authorized consumer project, use the single-skill subdirectory:
+
+```sh
+apm install yohi/agent-compass/skills/agent-compass --target opencode
+```
+
+Pin a reviewed commit for reproducible installs and retain the consumer lockfile.
+See [APM distribution](docs/APM.md). The skill retrieves current guidance when used.
 
 ## Quick start
 

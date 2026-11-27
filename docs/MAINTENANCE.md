@@ -23,7 +23,8 @@ not claims of newly released guidance. Later observations compare normalized
 content hashes. A bot-owned ledger issue records the latest pending snapshot,
 stage, reservations and completed disposition per source. The original
 monitor and discovery continue independently. New discovery URLs are not
-automatically registered or sent to a model.
+automatically registered or sent to a model. Owner-selected registration is supported by
+[Prepare discovery registration](REGISTRATION.md); merged sources enter this existing maintenance inventory.
 
 The old source body is not available; analysis compares current normalized
 source and linked registry records. Latest pending snapshots coalesce;

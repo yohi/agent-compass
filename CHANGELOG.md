@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.0 — 2026-11-27
+
+- Owner-selected discovery registration with fresh index/source evidence, scoped lifecycle records and draft registration PRs; existing Gemini maintenance after merge.
+- Manifestless APM skill distribution instructions and package contract tests.
+
 ## 0.7.0 — 2026-11-27
 
 - Owner-only adoption workflow: select candidate indices/statuses/placements, verify exact source and existing records, prepare validated registry diff on the same draft PR with receipt. No automatic merge.

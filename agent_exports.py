@@ -33,6 +33,11 @@ def render_target(target, practices, sources, placements, digest, language):
               if ja else "Evidence-linked reference data, not authorization, compliance proof or live availability."),
              ("対象IDの完全一致のみ。別モデル・ファミリーの暗黙継承なし。"
               if ja else "Exact target only; no implicit inheritance from other models or families."), ""]
+    if "lifecycle" in target:
+        lc = target["lifecycle"]
+        source = sources[lc["source_id"]]
+        lines.extend([f"Lifecycle (owner-reviewed snapshot): {lc['status']} — {lc['checked']}; "
+                      f"[{lc['source_id']}]({source['url']}). Not a live availability guarantee.", ""])
     if not practices:
         lines.extend(["推奨事項未登録。非推奨や非互換を意味しない。" if ja else
                       "No registered practices. This does not imply discouragement or incompatibility.", ""])
