@@ -23,6 +23,7 @@ See README.md for the operating model and registry/ for canonical data.
 - Never modify or upload audited input automatically.
 - Publish only allowlisted static assets, skill references and public registry-derived content. Never upload auditor input.
 - Agent exports derive from the canonical registry; retain scope, status and evidence. No implicit model inheritance.
+- Maintenance may create only unadopted proposal records on dedicated branches when explicitly enabled; no automatic registry adoption, PR approval or merge.
 - External writes and new tasks require Human Owner approval.
 - Validate proportionately; stop when the approved scope is complete.
 - Do not initiate repeated independent reviews or corrections automatically.

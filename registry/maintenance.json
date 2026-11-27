@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "provider": "google-ai-studio-free-tier",
+  "models": {
+    "classify": {
+      "id": "gemini-3.5-flash-lite",
+      "daily_limit": 50
+    },
+    "analyze": {
+      "id": "gemini-3.8-flash",
+      "daily_limit": 10
+    },
+    "complex": {
+      "id": "gemini-4-hydrogen",
+      "daily_limit": 5
+    },
+    "alternate": {
+      "id": "gemini-3.6-flash",
+      "daily_limit": 5
+    }
+  },
+  "min_interval_seconds": 15,
+  "max_input_bytes": 60000,
+  "max_output_tokens": 4000,
+  "max_proposals_per_source": 3,
+  "paid_fallback": false
+}

@@ -1,0 +1,37 @@
+name: Verify public portal
+on:
+  schedule:
+    - cron: "23 4 * * *"
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Publish knowledge portal"]
+    types: [completed]
+permissions:
+  contents: read
+jobs:
+  health:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'master')
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: python build_site.py --output _site
+      - name: Verify published exact snapshot (deployment runs) and endpoint bytes
+        env:
+          EXPECTED: ${{ github.event_name == 'workflow_run' && '_site/api/v1/manifest.json' || '' }}
+        run: |
+          for attempt in 1 2 3 4; do
+            if [ -n "$EXPECTED" ]; then
+              python check_portal.py --expected-manifest "$EXPECTED" && exit 0
+            else
+              python check_portal.py && exit 0
+            fi
+            if [ "$attempt" -lt 4 ]; then sleep 15; fi
+          done
+          exit 1

@@ -12,6 +12,7 @@ AIコーディングエージェント・LLMの公式推奨事項を継続管理
 - [Pinned project pilot and A/B case](docs/PILOT.md)
 - [Public knowledge portal and Pages setup](docs/PORTAL.md)
 - [Agent-ready interface and Skill](docs/AGENT_INTERFACE.md)
+- [Free-tier knowledge maintenance and portal health](docs/MAINTENANCE.md)
 - [Monitor workflow](.github/workflows/monitor.yml) / [monitor state and notifications](../../issues)
 
 ## Web portal
@@ -51,6 +52,13 @@ output directory. It never installs or overwrites existing AGENTS.md files.
 See [generator usage](docs/GENERATOR.md). The auditor reads a selected instruction
 file without modifying it and reports lexical review candidates, not compliance
 or safety verdicts. See [auditor usage](docs/AUDITOR.md).
+
+## Knowledge maintenance
+
+Optional free-tier Gemini analysis runs only after owner configures the key and
+explicit free-tier confirmation variable. It proposes unadopted draft PRs,
+never changes the canonical registry automatically. See [setup and limits](docs/MAINTENANCE.md).
+The public portal has an independent HTTP/digest health workflow.
 
 ## Operating model / 運用
 

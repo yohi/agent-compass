@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.0 — 2026-11-27
+
+- Opt-in free-tier Gemini maintenance with persistent attempt caps, pending snapshots and validated unadopted proposal PRs.
+- Public endpoint HTTP and digest health checks after deployment and daily.
+
 ## 0.5.1 — 2026-11-27
 
 - Agent-ready llms.txt and full indexes, English/Japanese exact-target Markdown, static JSON API v1.
