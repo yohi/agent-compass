@@ -144,21 +144,61 @@ class AutoAdoptionTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "prepared_ref_changed"):
                 a.read_pr(self.endpoint, 4, self.head, sleep=lambda _: None)
 
-    def test_validation_dispatch_requires_exact_successful_job(self):
-        env = {"GITHUB_RUN_ID": "42", "GITHUB_RUN_ATTEMPT": "1"}
-        run = {"head_sha": self.master, "head_branch": "master", "event": "workflow_dispatch",
+    def validation_fixture(self, nonce="42-1"):
+        run = {"id": 5, "head_sha": self.master, "head_branch": "master", "event": "workflow_dispatch",
                "path": ".github/workflows/validate-adoption.yml",
-               "display_title": a.validation_title(4, self.head, self.master, "42-1"),
-               "actor": {"login": a.BOT}, "status": "completed", "conclusion": "success"}
+               "display_title": a.validation_title(4, self.head, self.master, nonce),
+               "actor": {"login": a.BOT}, "triggering_actor": {"login": a.BOT},
+               "repository": {"full_name": a.REPO}, "head_repository": {"full_name": a.REPO},
+               "status": "completed", "conclusion": "success", "run_attempt": 1}
         jobs = {"total_count": 1, "jobs": [{"name": "validate", "conclusion": "success",
                 "steps": [{"name": "Validate exact prepared adoption", "conclusion": "success"}]}]}
+        return run, jobs
+
+    def test_validation_dispatch_requires_exact_successful_job(self):
+        env = {"GITHUB_RUN_ID": "42", "GITHUB_RUN_ATTEMPT": "1"}
+        run, jobs = self.validation_fixture()
         with patch.object(adoption, "current_ref", return_value=self.master), \
-                patch.object(a, "gh", side_effect=[{"workflow_run_id": 5}, run, jobs]):
+                patch.object(a, "gh", side_effect=[{"workflow_runs": []}, {"workflow_run_id": 5}, run, jobs]) as gh:
             a.dispatch_validation(self.endpoint, self.master, 4, self.head, env, sleep=lambda _: None)
+            self.assertIn("/attempts/1/jobs", gh.call_args_list[-1].args[0])
         with patch.object(adoption, "current_ref", return_value=self.master), \
-                patch.object(a, "gh", side_effect=[{"workflow_run_id": 5}, run, {"total_count": 0, "jobs": []}]):
+                patch.object(a, "gh", side_effect=[{"workflow_runs": []}, {"workflow_run_id": 5}, run,
+                                                  {"total_count": 0, "jobs": []}]):
             with self.assertRaisesRegex(ValueError, "validation_job_missing"):
                 a.dispatch_validation(self.endpoint, self.master, 4, self.head, env, sleep=lambda _: None)
+
+    def test_validation_waits_for_identity_propagation(self):
+        run, jobs = self.validation_fixture()
+        lag = {**run, "display_title": "", "actor": None, "triggering_actor": None}
+        env = {"GITHUB_RUN_ID": "42", "GITHUB_RUN_ATTEMPT": "1"}
+        with patch.object(adoption, "current_ref", return_value=self.master), \
+                patch.object(a, "gh", side_effect=[{"workflow_runs": []}, {"workflow_run_id": 5},
+                                                  lag, run, jobs]):
+            a.dispatch_validation(self.endpoint, self.master, 4, self.head, env, sleep=lambda _: None)
+        with patch.object(adoption, "current_ref", return_value=self.master), \
+                patch.object(a, "gh", side_effect=[{"workflow_runs": []}, {"workflow_run_id": 5}]
+                             + [{**run, "head_sha": "f"*40}]*6) as gh:
+            with self.assertRaisesRegex(ValueError, "validation_run_identity"):
+                a.dispatch_validation(self.endpoint, self.master, 4, self.head, env, sleep=lambda _: None)
+            self.assertEqual(gh.call_count, 8)
+
+    def test_validation_reuses_exact_success_without_dispatch(self):
+        run, jobs = self.validation_fixture("41-1")
+        env = {"GITHUB_RUN_ID": "42", "GITHUB_RUN_ATTEMPT": "1"}
+        with patch.object(adoption, "current_ref", return_value=self.master), \
+                patch.object(a, "gh", side_effect=[{"workflow_runs": [run]}, run, jobs]) as gh:
+            a.dispatch_validation(self.endpoint, self.master, 4, self.head, env, sleep=lambda _: None)
+            self.assertEqual(gh.call_count, 3)
+            self.assertFalse(any(call.args[0] == "--method" for call in gh.call_args_list))
+        # A stale base or wrong actor is not reusable, even with a matching title.
+        new_run, new_jobs = self.validation_fixture()
+        for stale in ({**run, "head_sha": "f"*40}, {**run, "triggering_actor": {"login": "other"}}):
+            with patch.object(adoption, "current_ref", return_value=self.master), \
+                    patch.object(a, "gh", side_effect=[{"workflow_runs": [stale]},
+                                                      {"workflow_run_id": 5}, new_run, new_jobs]) as gh:
+                a.dispatch_validation(self.endpoint, self.master, 4, self.head, env, sleep=lambda _: None)
+                self.assertEqual(gh.call_args_list[1].args[0], "--method")
 
     def test_optional_pending_only(self):
         pending = {"head_sha": self.head, "event": "pull_request", "path": ".github/workflows/validate.yml",

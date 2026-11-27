@@ -299,43 +299,112 @@ def validation_title(number, head, master, nonce):
     return f"Adoption validation PR {number} {head} {master} {nonce}"
 
 
-def dispatch_validation(endpoint, master, number, head, env, sleep=time.sleep):
-    nonce = env.get("GITHUB_RUN_ID", "") + "-" + env.get("GITHUB_RUN_ATTEMPT", "")
-    require(re.fullmatch(r"[0-9]+-[0-9]+", nonce), "validation_nonce")
-    title = validation_title(number, head, master, nonce)
-    require(adoption.current_ref(endpoint, "master") == master, "master_changed_before_ci")
-    result = gh("--method", "POST", "-H", "X-GitHub-Api-Version: 2026-03-10",
-                f"{endpoint}/actions/workflows/validate-adoption.yml/dispatches",
-                payload={"ref": "master", "inputs": {"proposal_pr": str(number),
-                         "prepared_head": head, "expected_master": master, "nonce": nonce}})
-    run_id = result.get("workflow_run_id") if isinstance(result, dict) else None
-    # Older API behavior may return 204. Bind to a unique run-name, never
-    # accept the latest arbitrary successful run.
+VALIDATION_PATH = ".github/workflows/validate-adoption.yml"
+
+
+def validation_mismatches(run, run_id, master, title):
+    # Only local field names are logged; never print arbitrary API values.
+    expected = {
+        "id": (run.get("id"), run_id),
+        "head_sha": (run.get("head_sha"), master),
+        "head_branch": (run.get("head_branch"), "master"),
+        "event": (run.get("event"), "workflow_dispatch"),
+        "path": (run.get("path"), VALIDATION_PATH),
+        "display_title": (run.get("display_title"), title),
+        "actor": ((run.get("actor") or {}).get("login"), BOT),
+        "triggering_actor": ((run.get("triggering_actor") or {}).get("login"), BOT),
+        "repository": ((run.get("repository") or {}).get("full_name"), REPO),
+        "head_repository": ((run.get("head_repository") or {}).get("full_name"), REPO),
+    }
+    return [key for key, (actual, wanted) in expected.items() if actual != wanted]
+
+
+def validation_jobs_ok(jobs):
+    return (jobs.get("total_count") == 1 and len(jobs.get("jobs", [])) == 1
+            and jobs["jobs"][0].get("name") == "validate"
+            and jobs["jobs"][0].get("conclusion") == "success"
+            and any(x.get("name") == "Validate exact prepared adoption" and x.get("conclusion") == "success"
+                    for x in jobs["jobs"][0].get("steps", [])))
+
+
+def validation_runs(endpoint, master):
+    result = gh(f"{endpoint}/actions/workflows/validate-adoption.yml/runs"
+                f"?event=workflow_dispatch&branch=master&head_sha={master}&per_page=100")
+    require(isinstance(result, dict) and isinstance(result.get("workflow_runs"), list),
+            "validation_list_shape")
+    # Bounded search: a missed older result is not accepted as evidence.
+    return result["workflow_runs"]
+
+
+def wait_validation(endpoint, master, head, title, run_id, sleep, reused=False):
+    mismatches = []
+    identity_waits = 0
     for attempt in range(48):
         if run_id is None:
-            runs = gh(f"{endpoint}/actions/workflows/validate-adoption.yml/runs?event=workflow_dispatch&branch=master&head_sha={master}&per_page=100")
-            matched = [r for r in runs["workflow_runs"] if r.get("display_title") == title]
+            matched = [r for r in validation_runs(endpoint, master) if r.get("display_title") == title]
             require(len(matched) <= 1, "validation_run_ambiguous")
             if matched:
                 run_id = matched[0]["id"]
         if run_id is not None:
             require(type(run_id) is int and run_id > 0, "validation_run_id")
-            run = gh(f"{endpoint}/actions/runs/{run_id}")
-            require(run["head_sha"] == master and run["head_branch"] == "master"
-                    and run["event"] == "workflow_dispatch" and run["path"] == ".github/workflows/validate-adoption.yml"
-                    and run["display_title"] == title and run["actor"]["login"] == BOT, "validation_run_identity")
-            if run["status"] == "completed":
-                require(run["conclusion"] == "success", "validation_ci_failed")
-                jobs = gh(f"{endpoint}/actions/runs/{run_id}/jobs?per_page=100")
-                require(jobs["total_count"] == 1 and jobs["jobs"][0]["name"] == "validate"
-                        and jobs["jobs"][0]["conclusion"] == "success"
-                        and any(x["name"] == "Validate exact prepared adoption" and x["conclusion"] == "success"
-                                for x in jobs["jobs"][0]["steps"]), "validation_job_missing")
+            try:
+                run = gh(f"{endpoint}/actions/runs/{run_id}")
+            except subprocess.CalledProcessError as exc:
+                if advisory.diagnostic(exc) != "github_http_404" or identity_waits >= 5:
+                    raise
+                identity_waits += 1
+                print("AUTO_ADOPTION_CI_IDENTITY_WAIT", run_id, "run_not_visible", flush=True)
+                if attempt < 47:
+                    sleep(10)
+                continue
+            mismatches = validation_mismatches(run, run_id, master, title)
+            if mismatches:
+                identity_waits += 1
+                print("AUTO_ADOPTION_CI_IDENTITY_WAIT", run_id, ",".join(mismatches), flush=True)
+                require(identity_waits <= 5, "validation_run_identity")
+            elif run.get("status") == "completed":
+                require(run.get("conclusion") == "success", "validation_ci_failed")
+                run_attempt = run.get("run_attempt")
+                require(type(run_attempt) is int and run_attempt > 0, "validation_run_attempt")
+                # Bind jobs to the exact run attempt, not an earlier/later rerun.
+                jobs = gh(f"{endpoint}/actions/runs/{run_id}/attempts/{run_attempt}/jobs?per_page=100")
+                require(validation_jobs_ok(jobs), "validation_job_missing")
+                if reused:
+                    print("AUTO_ADOPTION_CI_REUSED", run_id, head, flush=True)
                 print("AUTO_ADOPTION_CI_VERIFIED", run_id, head, flush=True)
                 return
         if attempt < 47:
             sleep(10)
+    require(not mismatches, "validation_run_identity")
     raise ValueError("validation_ci_timeout")
+
+
+def dispatch_validation(endpoint, master, number, head, env, sleep=time.sleep):
+    nonce = env.get("GITHUB_RUN_ID", "") + "-" + env.get("GITHUB_RUN_ATTEMPT", "")
+    require(re.fullmatch(r"[0-9]+-[0-9]+", nonce), "validation_nonce")
+    title = validation_title(number, head, master, nonce)
+    require(adoption.current_ref(endpoint, "master") == master, "master_changed_before_ci")
+    # The master SHA binds the exact trusted validator and policy as well as
+    # its inputs. Never reuse a result after master or prepared HEAD changes.
+    prefix = validation_title(number, head, master, "")
+    for run in validation_runs(endpoint, master):
+        previous = run.get("display_title", "")
+        run_id = run.get("id")
+        if (isinstance(previous, str) and previous.startswith(prefix)
+                and re.fullmatch(r"[0-9]+-[0-9]+", previous[len(prefix):])
+                and type(run_id) is int and run_id > 0
+                and run.get("status") == "completed" and run.get("conclusion") == "success"
+                and not validation_mismatches(run, run_id, master, previous)):
+            wait_validation(endpoint, master, head, previous, run_id, sleep, reused=True)
+            require(adoption.current_ref(endpoint, "master") == master, "master_changed_after_ci")
+            return
+    result = gh("--method", "POST", "-H", "X-GitHub-Api-Version: 2026-03-10",
+                f"{endpoint}/actions/workflows/validate-adoption.yml/dispatches",
+                payload={"ref": "master", "inputs": {"proposal_pr": str(number),
+                         "prepared_head": head, "expected_master": master, "nonce": nonce}})
+    run_id = result.get("workflow_run_id") if isinstance(result, dict) else None
+    wait_validation(endpoint, master, head, title, run_id, sleep)
+    require(adoption.current_ref(endpoint, "master") == master, "master_changed_after_ci")
 
 
 def validate_dispatched(repo, master, env):

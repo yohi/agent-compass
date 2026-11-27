@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.10.2 — 2026-11-27
+
+- Bound validation run metadata propagation waits, report mismatched field names safely, and reuse successful exact-head/exact-master bot validation with attempt-specific job verification. No change to adoption policy or merge rules.
+
 ## 0.10.1 — 2026-11-27
 
 - Resume interrupted conservative adoption from exact immutable receipt and full tree, bounded PR propagation polling, explicit trusted read-only validation dispatch, and ordinary merge/Pages publication without approving pending PR workflows or bypassing rules.

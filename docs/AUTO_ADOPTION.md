@@ -64,7 +64,13 @@ started jobs, not a job already executing; cancel any active run to stop it.
 Dispatch Validate prepared adoption on trusted master, with exact PR,
 HEAD, base and unique run identity. Its read-only job reconstructs and
 validates only data files; no candidate code is executed. Wait for that
-exact successful job and test step. Bounded PR state polling tolerates
+exact successful job and test step, bound to the run attempt. Reuse a
+successful bot-dispatched validation for the identical PR HEAD and exact
+master SHA (including policy/validator code), only after verifying its
+run metadata and actual successful job. A changed master requires fresh
+validation even when the registry is unchanged. Allow up to five waits
+for initially inconsistent/missing run metadata, with fixed field-name
+diagnostics; never accept a mismatched identity. Bounded PR state polling tolerates
 propagation lag only if the branch ref is exact. Mark draft ready, then
 use ordinary GitHub merge with exact HEAD. No approval, check status
 fabrication or rule bypass. On an unprotected master only, the known
