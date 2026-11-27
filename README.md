@@ -16,6 +16,7 @@ AIコーディングエージェント・LLMの公式推奨事項を継続管理
 - [Owner-selected knowledge adoption](docs/ADOPTION.md)
 - [Discovery registration and lifecycle](docs/REGISTRATION.md)
 - [APM skill distribution](docs/APM.md)
+- [Independent adoption advisory](docs/ADVISORY.md)
 - [Monitor workflow](.github/workflows/monitor.yml) / [monitor state and notifications](../../issues)
 
 ## Web portal

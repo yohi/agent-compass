@@ -27,6 +27,7 @@ See README.md for the operating model and registry/ for canonical data.
 - The owner-only adoption workflow may prepare an explicitly selected registry diff on the same candidate PR, never merge or write master.
 - The owner-only discovery registration workflow may prepare a draft registration PR from freshly observed allowlisted evidence, never merge or infer lifecycle from model mentions.
 - Distribute only the portable skill directory through APM; no duplicated rules, scripts, MCP or global configuration.
+- Independent advisory may evaluate untouched public candidate PRs and post advice only, under explicit free-tier enablement; never approve, adopt, merge, use paid fallback or execute candidate code.
 - External writes and new tasks require Human Owner approval.
 - Validate proportionately; stop when the approved scope is complete.
 - Do not initiate repeated independent reviews or corrections automatically.

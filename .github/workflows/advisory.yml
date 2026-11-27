@@ -1,0 +1,46 @@
+name: Independent adoption advisory
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+    inputs:
+      proposal_pr:
+        description: "Optional candidate PR number; blank scans open draft proposals"
+        required: false
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: agent-compass-advisory
+  cancel-in-progress: false
+jobs:
+  advisory:
+    if: github.repository == 'yohi/agent-compass' && github.ref == 'refs/heads/master' && (github.event_name == 'schedule' || (github.actor == github.repository_owner && github.triggering_actor == github.repository_owner))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: python compass.py validate
+      - run: python -m unittest discover -s tests -v
+      - name: Evaluate public candidate PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ADVISORY_ENABLED: ${{ vars.ADVISORY_ENABLED }}
+          ADVISORY_PR: ${{ inputs.proposal_pr }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          NVIDIA_FREE_TIER_CONFIRMED: ${{ vars.NVIDIA_FREE_TIER_CONFIRMED }}
+          NVIDIA_PROTOTYPE_USE_CONFIRMED: ${{ vars.NVIDIA_PROTOTYPE_USE_CONFIRMED }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_FREE_TIER_CONFIRMED: ${{ vars.OPENROUTER_FREE_TIER_CONFIRMED }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_FREE_TIER_CONFIRMED: ${{ vars.GROQ_FREE_TIER_CONFIRMED }}
+        run: python advisory.py

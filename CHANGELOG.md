@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.0 — 2026-11-27
+
+- Independent adoption advisory with bounded free-tier NVIDIA (manual prototype only), OpenRouter and Groq routes, durable request reservations, exact source/PR validation and advisory-only comments; no automatic adoption or merge.
+
 ## 0.8.0 — 2026-11-27
 
 - Owner-selected discovery registration with fresh index/source evidence, scoped lifecycle records and draft registration PRs; existing Gemini maintenance after merge.

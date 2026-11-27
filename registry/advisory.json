@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "daily_limit": 10,
+  "monthly_limit": 300,
+  "max_prs_per_run": 10,
+  "max_input_bytes": 100000,
+  "min_interval_seconds": 15,
+  "providers": [
+    {
+      "provider": "nvidia",
+      "model": "moonshotai/kimi-k3.1-pro",
+      "reasoning_effort": "high",
+      "max_tokens": 16384
+    },
+    {
+      "provider": "nvidia",
+      "model": "z-ai/glm-5.3-flash",
+      "max_tokens": 8192
+    },
+    {
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "max_tokens": 8192
+    },
+    {
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "reasoning_effort": "medium",
+      "max_tokens": 4096
+    }
+  ],
+  "paid_fallback": false
+}
